@@ -48,14 +48,11 @@ end
 
 local TOGGLE_ICON = getZealistIcon()
 
--- 1. HARD ENGINE LOCK KE 15 FPS
-local function lockFPS15()
-    pcall(function()
-        if setfpscap then setfpscap(15) end
-        if set_fps_cap then set_fps_cap(15) end
-    end)
-end
-lockFPS15()
+-- 1. HARD ENGINE LOCK KE 15 FPS (Cukup 1 Kali di Awal)
+pcall(function()
+    if setfpscap then setfpscap(15) end
+    if set_fps_cap then set_fps_cap(15) end
+end)
 
 -- PENGUKUR REAL RENDER FPS (Akurat & Bukan Physics Solver)
 local realRenderFps = 15
@@ -121,10 +118,9 @@ pcall(function()
     end)
 end)
 
--- 6. PEMBERSIH SAMPAH MEMORI (SAFE GARBAGE COLLECTION)
+-- 6. PEMBERSIH SAMPAH MEMORI (Ringan & Stabil Setiap 60 Detik Tanpa Bikin Hang)
 task.spawn(function()
-    while task.wait(30) do
-        lockFPS15()
+    while task.wait(60) do
         pcall(function()
             collectgarbage("collect")
         end)
@@ -625,37 +621,56 @@ local function scanAllGameDataSafe()
         bestPets = {}
     }
 
-    -- 1. Baca Leaderstats (W1 Rebirths, Eggs, Clicks, Gems)
+    -- 1. Baca Currencies dari leaderstats & Folder Data Pemain
     pcall(function()
-        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
-        if leaderstats then
-            for _, s in ipairs(leaderstats:GetChildren()) do
-                local low = string.lower(s.Name)
-                if string.find(low, "rebirth") then
-                    result.w1Rebirths = formatCompact(s.Value)
-                elseif string.find(low, "egg") then
-                    result.eggsVal = formatCompact(s.Value)
-                elseif string.find(low, "click") or string.find(low, "tap") then
-                    result.clicksVal = formatCompact(s.Value)
-                    lastKnownClicks = result.clicksVal
-                elseif string.find(low, "gem") or string.find(low, "diamond") then
-                    result.gemsVal = formatCompact(s.Value)
-                    lastKnownGems = result.gemsVal
+        local function checkContainerForCurrencies(container)
+            if not container then return end
+            for _, item in ipairs(container:GetChildren()) do
+                local low = string.lower(item.Name)
+                local val = nil
+                if item:IsA("ValueBase") then
+                    val = item.Value
+                end
+
+                if val ~= nil then
+                    local isNum = (type(val) == "number") or (type(val) == "string" and tonumber(val:match("^[%d%.,]+")))
+                    if isNum then
+                        if (string.find(low, "gem") or string.find(low, "diamond")) and (result.gemsVal == "-" or result.gemsVal == "0") then
+                            result.gemsVal = formatCompact(val)
+                            lastKnownGems = result.gemsVal
+                        elseif (string.find(low, "click") or string.find(low, "tap")) and not string.find(low, "control") and not string.find(low, "speed") and not string.find(low, "multi") and (result.clicksVal == "-" or result.clicksVal == "0" or result.clicksVal == "control") then
+                            result.clicksVal = formatCompact(val)
+                            lastKnownClicks = result.clicksVal
+                        elseif string.find(low, "rebirth") and result.w1Rebirths == "0" then
+                            result.w1Rebirths = formatCompact(val)
+                        elseif string.find(low, "egg") and result.eggsVal == "0" then
+                            result.eggsVal = formatCompact(val)
+                        end
+                    end
                 end
             end
         end
+
+        checkContainerForCurrencies(LocalPlayer:FindFirstChild("leaderstats"))
+        checkContainerForCurrencies(LocalPlayer:FindFirstChild("Data"))
+        checkContainerForCurrencies(LocalPlayer:FindFirstChild("Stats"))
+        checkContainerForCurrencies(LocalPlayer:FindFirstChild("Currencies"))
+        checkContainerForCurrencies(LocalPlayer:FindFirstChild("Values"))
     end)
 
-    -- 2. Baca Attributes (Gems & Clicks fallback jika tidak ada di leaderstats)
+    -- 2. Baca Attributes (Hanya angka valid, abaikan string seperti 'control')
     pcall(function()
         for attrName, attrVal in pairs(LocalPlayer:GetAttributes()) do
             local low = string.lower(attrName)
-            if (string.find(low, "gem") or string.find(low, "diamond")) and result.gemsVal == "-" then
-                result.gemsVal = formatCompact(attrVal)
-                lastKnownGems = result.gemsVal
-            elseif (string.find(low, "click") or string.find(low, "tap")) and result.clicksVal == "-" then
-                result.clicksVal = formatCompact(attrVal)
-                lastKnownClicks = result.clicksVal
+            local isNum = (type(attrVal) == "number") or (type(attrVal) == "string" and tonumber(attrVal:match("^[%d%.,]+")))
+            if isNum then
+                if (string.find(low, "gem") or string.find(low, "diamond")) and (result.gemsVal == "-" or result.gemsVal == "0") then
+                    result.gemsVal = formatCompact(attrVal)
+                    lastKnownGems = result.gemsVal
+                elseif (string.find(low, "click") or string.find(low, "tap")) and not string.find(low, "control") and not string.find(low, "speed") and (result.clicksVal == "-" or result.clicksVal == "0" or result.clicksVal == "control") then
+                    result.clicksVal = formatCompact(attrVal)
+                    lastKnownClicks = result.clicksVal
+                end
             end
         end
     end)
@@ -778,7 +793,7 @@ local function scanAllGameDataSafe()
                             end
                         elseif (string.find(low, "opened") or string.find(low, "hatched")) and not string.find(low, "egg") then
                             local v = findAdjacentValue(desc)
-                            if v and string.find(v, "%d") then
+                            if v and string.find(v, "%d") and not string.find(v, "1 in") and not string.find(v, "in") and not string.find(v, "%%") then
                                 result.eggBox.eggsOpened = v
                                 lastKnownEggsOpened = v
                             end
@@ -808,7 +823,57 @@ local function scanAllGameDataSafe()
                             end
                         end
 
-                        -- (D) DETEKSI HEADER BEST HATCHES & LAST HATCHES
+                        -- (D) DETEKSI GEMS & CLICKS LANGSUNG DARI HUD GUI GAME
+                        local isCurrencyFormat = text:match("^[%d%.,]+%s*[A-Za-z]?$")
+                        if isCurrencyFormat and not string.find(low, "rebirth") and not string.find(low, "island") and not string.find(low, "1 in") then
+                            local dName = string.lower(desc.Name)
+                            local pName = desc.Parent and string.lower(desc.Parent.Name) or ""
+
+                            -- 1. Berdasarkan Nama Label / Parent
+                            if string.find(dName, "gem") or string.find(dName, "diamond") or string.find(pName, "gem") or string.find(pName, "diamond") then
+                                if not string.find(low, "price") and not string.find(low, "cost") and not string.find(low, "req") and not string.find(low, "buy") then
+                                    result.gemsVal = text:gsub("%s+", "")
+                                    lastKnownGems = result.gemsVal
+                                end
+                            elseif (string.find(dName, "click") or string.find(dName, "tap") or string.find(pName, "click") or string.find(pName, "tap")) and not string.find(dName, "control") and not string.find(pName, "control") then
+                                if not string.find(low, "speed") and not string.find(low, "multi") and not string.find(low, "chance") then
+                                    result.clicksVal = text:gsub("%s+", "")
+                                    lastKnownClicks = result.clicksVal
+                                end
+                            end
+
+                            -- 2. Berdasarkan Icon Gambar Berdampingan (Gem / Tap Cursor)
+                            local prnt = desc.Parent
+                            if prnt then
+                                for _, sib in ipairs(prnt:GetChildren()) do
+                                    if sib:IsA("ImageLabel") and sib.Visible then
+                                        local imgLow = string.lower(sib.Image)
+                                        local sibName = string.lower(sib.Name)
+                                        if (string.find(imgLow, "gem") or string.find(imgLow, "diamond") or string.find(sibName, "gem") or string.find(sibName, "diamond")) and (result.gemsVal == "-" or result.gemsVal == "0") then
+                                            result.gemsVal = text:gsub("%s+", "")
+                                            lastKnownGems = result.gemsVal
+                                        elseif (string.find(imgLow, "tap") or string.find(imgLow, "click") or string.find(imgLow, "cursor") or string.find(imgLow, "pointer") or string.find(sibName, "tap") or string.find(sibName, "click")) and (result.clicksVal == "-" or result.clicksVal == "0" or result.clicksVal == "control") then
+                                            result.clicksVal = text:gsub("%s+", "")
+                                            lastKnownClicks = result.clicksVal
+                                        end
+                                    end
+                                end
+                            end
+                        elseif string.find(text, "💎") or string.find(low, "gems:") or string.find(low, "gems :") then
+                            local num = text:match("[%d%.,]+%s*[A-Za-z]*")
+                            if num and #num >= 1 then
+                                result.gemsVal = num:gsub("%s+", "")
+                                lastKnownGems = result.gemsVal
+                            end
+                        elseif string.find(low, "clicks:") or string.find(low, "taps:") or string.find(low, "clicks :") or string.find(low, "taps :") then
+                            local num = text:match("[%d%.,]+%s*[A-Za-z]*")
+                            if num and #num >= 1 then
+                                result.clicksVal = num:gsub("%s+", "")
+                                lastKnownClicks = result.clicksVal
+                            end
+                        end
+
+                        -- (E) DETEKSI HEADER BEST HATCHES & LAST HATCHES
                         if string.find(low, "best") and string.find(low, "hatch") then
                             bestLbl = desc
                         elseif string.find(low, "last") and string.find(low, "hatch") then
@@ -985,7 +1050,6 @@ local function updateHUD()
         local secs = elapsed % 60
         local uptimeStr = string.format("%02d:%02d:%02d", hrs, mins, secs)
 
-        lockFPS15()
         local fps = math.max(1, realRenderFps)
         local ping = 0
         pcall(function()
@@ -1107,10 +1171,10 @@ local function updateHUD()
     end)
 end
 
--- EKSEKUSI SEGERA PADA FRAME 0 (Langsung Muncul dalam 0.01 Detik!)
+-- EKSEKUSI SEGERA PADA FRAME 0 (Hemat CPU, Update Setiap 1 Detik)
 task.spawn(function()
     updateHUD()
-    while task.wait(0.5) do
+    while task.wait(1) do
         updateHUD()
     end
 end)
