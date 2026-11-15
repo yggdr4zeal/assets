@@ -329,7 +329,7 @@ statsLabel.Position = UDim2.new(0, 16, 0, 36)
 statsLabel.BackgroundTransparency = 1
 statsLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
 statsLabel.Font = Enum.Font.Code
-statsLabel.TextSize = 13
+statsLabel.TextSize = 11
 statsLabel.TextXAlignment = Enum.TextXAlignment.Left
 statsLabel.TextYAlignment = Enum.TextYAlignment.Top
 statsLabel.ZIndex = 4
@@ -594,8 +594,16 @@ local function getRarityColors(oddsText)
 end
 
 local lastKnownW2 = "0"
-local lastKnownEgg = "Crimson Egg"
-local lastKnownIsland = "Crimson Island (World 2)"
+local lastKnownEgg = "Rift Egg"
+local lastKnownIsland = "Rift Island (World 2)"
+local lastKnownClicks = "-"
+local lastKnownGems = "-"
+local lastKnownInventory = "-"
+local lastKnownEggsOpened = "-"
+local lastKnownHatchSpeed = "-"
+local lastKnownPetsKept = "-"
+local lastKnownAutoDeleted = "-"
+local lastKnownRarestOdds = "-"
 
 local function scanAllGameDataSafe()
     local result = {
@@ -604,25 +612,55 @@ local function scanAllGameDataSafe()
         w1Rebirths = "0",
         w2Rebirths = (lastKnownW2 ~= "0") and lastKnownW2 or "0",
         eggsVal = "0",
+        clicksVal = (lastKnownClicks ~= "-") and lastKnownClicks or "-",
+        gemsVal = (lastKnownGems ~= "-") and lastKnownGems or "-",
+        eggBox = {
+            inventory   = lastKnownInventory,
+            eggsOpened  = lastKnownEggsOpened,
+            hatchSpeed  = lastKnownHatchSpeed,
+            petsKept    = lastKnownPetsKept,
+            autoDeleted = lastKnownAutoDeleted,
+            rarestOdds  = lastKnownRarestOdds
+        },
         bestPets = {}
     }
 
-    -- 1. Baca Leaderstats (W1 Rebirths & Eggs)
+    -- 1. Baca Leaderstats (W1 Rebirths, Eggs, Clicks, Gems)
     pcall(function()
         local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
         if leaderstats then
             for _, s in ipairs(leaderstats:GetChildren()) do
-                local name = string.lower(s.Name)
-                if string.find(name, "rebirth") then
+                local low = string.lower(s.Name)
+                if string.find(low, "rebirth") then
                     result.w1Rebirths = formatCompact(s.Value)
-                elseif string.find(name, "egg") then
+                elseif string.find(low, "egg") then
                     result.eggsVal = formatCompact(s.Value)
+                elseif string.find(low, "click") or string.find(low, "tap") then
+                    result.clicksVal = formatCompact(s.Value)
+                    lastKnownClicks = result.clicksVal
+                elseif string.find(low, "gem") or string.find(low, "diamond") then
+                    result.gemsVal = formatCompact(s.Value)
+                    lastKnownGems = result.gemsVal
                 end
             end
         end
     end)
 
-    -- 2. Baca Floor / Island dari Attributes
+    -- 2. Baca Attributes (Gems & Clicks fallback jika tidak ada di leaderstats)
+    pcall(function()
+        for attrName, attrVal in pairs(LocalPlayer:GetAttributes()) do
+            local low = string.lower(attrName)
+            if (string.find(low, "gem") or string.find(low, "diamond")) and result.gemsVal == "-" then
+                result.gemsVal = formatCompact(attrVal)
+                lastKnownGems = result.gemsVal
+            elseif (string.find(low, "click") or string.find(low, "tap")) and result.clicksVal == "-" then
+                result.clicksVal = formatCompact(attrVal)
+                lastKnownClicks = result.clicksVal
+            end
+        end
+    end)
+
+    -- 3. Baca Floor / Island dari Attributes
     pcall(function()
         local floorId = LocalPlayer:GetAttribute("TeleportArrivalId")
         if floorId == 21 or floorId == "21" then
@@ -632,7 +670,7 @@ local function scanAllGameDataSafe()
         end
     end)
 
-    -- 3. Scan PlayerGui Secara Aman Tanpa Kemungkinan Crash
+    -- 4. Scan PlayerGui Secara Aman Tanpa Kemungkinan Crash
     pcall(function()
         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
         if not pGui then return end
@@ -643,6 +681,32 @@ local function scanAllGameDataSafe()
         local bestLbl = nil
         local lastLbl = nil
         local potentialSlotElements = {}
+
+        -- Helper pembersih teks statistik penetasan telur (Bebas HTML font & anti-nyasar)
+        local function getCleanStatValue(label)
+            if not label or not label:IsA("TextLabel") then return nil end
+            local raw = label.Text
+            if not raw or raw == "" then return nil end
+            local clean = raw:gsub("<[^>]+>", ""):gsub("%s+", " "):gsub("^%s*(.-)%s*$", "%1")
+            local low = string.lower(clean)
+            if #clean > 20 or string.find(low, "multiplier") or string.find(low, "chance") or string.find(low, "kept tapping") or string.find(low, "upgrade") or string.find(low, "delete") then
+                return nil
+            end
+            return clean
+        end
+
+        local function findAdjacentValue(anchorLabel)
+            local prnt = anchorLabel.Parent
+            if prnt then
+                for _, sib in ipairs(prnt:GetChildren()) do
+                    if sib:IsA("TextLabel") and sib ~= anchorLabel and sib.Visible then
+                        local v = getCleanStatValue(sib)
+                        if v and #v > 0 then return v end
+                    end
+                end
+            end
+            return nil
+        end
 
         for _, desc in ipairs(pGui:GetDescendants()) do
             if desc:IsA("GuiObject") and desc.Visible then
@@ -705,7 +769,46 @@ local function scanAllGameDataSafe()
                             end
                         end
 
-                        -- (C) DETEKSI HEADER BEST HATCHES & LAST HATCHES
+                        -- (C) DETEKSI STATISTIK PENETASAN TELUR (EGG HATCHING STATS - CLEAN)
+                        if string.find(low, "inventory") and not string.find(low, "enchant") then
+                            local v = findAdjacentValue(desc)
+                            if v and string.find(v, "/") then
+                                result.eggBox.inventory = v
+                                lastKnownInventory = v
+                            end
+                        elseif (string.find(low, "opened") or string.find(low, "hatched")) and not string.find(low, "egg") then
+                            local v = findAdjacentValue(desc)
+                            if v and string.find(v, "%d") then
+                                result.eggBox.eggsOpened = v
+                                lastKnownEggsOpened = v
+                            end
+                        elseif (string.find(low, "/min") or string.find(low, "/s")) and #text <= 15 then
+                            local v = getCleanStatValue(desc)
+                            if v then
+                                result.eggBox.hatchSpeed = v
+                                lastKnownHatchSpeed = v
+                            end
+                        elseif string.find(low, "pets kept") then
+                            local v = findAdjacentValue(desc)
+                            if v and string.find(v, "%d") then
+                                result.eggBox.petsKept = v
+                                lastKnownPetsKept = v
+                            end
+                        elseif string.find(low, "auto%-deleted") or (string.find(low, "deleted") and not string.find(low, "button")) then
+                            local v = findAdjacentValue(desc)
+                            if v and string.find(v, "%d") then
+                                result.eggBox.autoDeleted = v
+                                lastKnownAutoDeleted = v
+                            end
+                        elseif string.find(low, "rarest odds") or (string.find(low, "rarest") and not string.find(low, "pet")) then
+                            local v = findAdjacentValue(desc)
+                            if v and string.find(v, "1 in") then
+                                result.eggBox.rarestOdds = v
+                                lastKnownRarestOdds = v
+                            end
+                        end
+
+                        -- (D) DETEKSI HEADER BEST HATCHES & LAST HATCHES
                         if string.find(low, "best") and string.find(low, "hatch") then
                             bestLbl = desc
                         elseif string.find(low, "last") and string.find(low, "hatch") then
@@ -976,20 +1079,31 @@ local function updateHUD()
         end)
         boostLabel.Text = (#luckList > 0) and table.concat(luckList, "\n") or "Tidak ada boost luck aktif"
 
-        -- Update Kolom Kiri (Bersih & Rapi)
+        -- Update Kolom Kiri (Lengkap: Sistem, Gameplay/Resource, dan Egg Stats)
         statsLabel.Text = string.format([[
 [STATUS SISTEM]
   • Uptime Sesi  : %s
   • FPS Engine   : %d FPS  |  Ping: %d ms
   • Memori RAM   : %d MB
 
-[GAMEPLAY UTAMA]
+[GAMEPLAY & RESOURCE]
   • Lokasi       : %s
   • Hatching Egg : %s
-  • Rebirths W1  : %s
-  • Rebirths W2  : %s
+  • Total Clicks : %s
+  • Total Gems   : %s
+  • Rebirths W1  : %s  |  W2: %s
   • Total Eggs   : %s
-]], uptimeStr, fps, ping, memMb, data.islandName, data.eggName, data.w1Rebirths, data.w2Rebirths, data.eggsVal)
+
+[EGG HATCHING STATS]
+  • Inventory    : %s
+  • Eggs Opened  : %s
+  • Hatch Speed  : %s
+  • Pets Kept    : %s
+  • Auto-Deleted : %s
+  • Rarest Odds  : %s
+]], uptimeStr, fps, ping, memMb,
+    data.islandName, data.eggName, data.clicksVal, data.gemsVal, data.w1Rebirths, data.w2Rebirths, data.eggsVal,
+    data.eggBox.inventory, data.eggBox.eggsOpened, data.eggBox.hatchSpeed, data.eggBox.petsKept, data.eggBox.autoDeleted, data.eggBox.rarestOdds)
     end)
 end
 
