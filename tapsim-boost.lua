@@ -201,7 +201,7 @@ if TOGGLE_ICON == "rbxassetid://0" or TOGGLE_ICON == "" then
     fallbackLabel.Parent = toggleBtn
 end
 
--- Fitur Drag Tombol Floating (Bisa Dipindah ke Mana Saja)
+-- Fitur Drag Tombol Floating
 local dragging = false
 local dragStart = nil
 local startPos = nil
@@ -234,43 +234,56 @@ mainContent.BackgroundTransparency = 1
 mainContent.ZIndex = 2
 mainContent.Parent = hudGui
 
-local hudVisible = true
+local isHudVisible = true
+
+local function setHudState(visible)
+    isHudVisible = visible
+    mainContent.Visible = visible
+    blackCover.Visible = visible
+
+    pcall(function()
+        RunService:Set3dRenderingEnabled(not visible)
+    end)
+
+    if visible then
+        btnStroke.Color = Color3.fromRGB(0, 200, 255)
+    else
+        btnStroke.Color = Color3.fromRGB(255, 200, 50)
+    end
+end
 
 toggleBtn.MouseButton1Click:Connect(function()
-    hudVisible = not hudVisible
-    mainContent.Visible = hudVisible
-    blackCover.Visible = hudVisible
-    
-    pcall(function()
-        RunService:Set3dRenderingEnabled(not hudVisible)
-    end)
-    
-    toggleBtn.ImageTransparency = hudVisible and 0 or 0.35
-    btnStroke.Color = hudVisible and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(150, 150, 150)
+    setHudState(not isHudVisible)
 end)
 
--- (D) Header Simetris ZEALIST
-local headerFrame = Instance.new("Frame")
-headerFrame.Name = "HeaderFrame"
-headerFrame.AnchorPoint = Vector2.new(0.5, 0)
-headerFrame.Size = UDim2.new(0, 660, 0, 50)
-headerFrame.Position = UDim2.new(0.5, 0, 0, 65)
-headerFrame.BackgroundTransparency = 1
-headerFrame.ZIndex = 3
-headerFrame.Parent = mainContent
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.H then
+        setHudState(not isHudVisible)
+    end
+end)
+
+-- (D) Header Tengah
+local header = Instance.new("Frame")
+header.Name = "HeaderCenter"
+header.AnchorPoint = Vector2.new(0.5, 0)
+header.Size = UDim2.new(0, 400, 0, 55)
+header.Position = UDim2.new(0.5, 0, 0, 65)
+header.BackgroundTransparency = 1
+header.ZIndex = 3
+header.Parent = mainContent
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Name = "TitleZEALIST"
+titleLabel.Name = "ZealistTitle"
 titleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-titleLabel.Size = UDim2.new(0, 280, 1, 0)
+titleLabel.Size = UDim2.new(1, 0, 1, 0)
 titleLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text = "ZEALIST"
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.Font = Enum.Font.FredokaOne
-titleLabel.TextSize = 42
-titleLabel.ZIndex = 4
-titleLabel.Parent = headerFrame
+titleLabel.TextSize = 44
+titleLabel.ZIndex = 3
+titleLabel.Parent = header
 
 local titleStroke = Instance.new("UIStroke")
 titleStroke.Color = Color3.fromRGB(0, 170, 255)
@@ -316,7 +329,7 @@ statsLabel.Position = UDim2.new(0, 16, 0, 36)
 statsLabel.BackgroundTransparency = 1
 statsLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
 statsLabel.Font = Enum.Font.Code
-statsLabel.TextSize = 12
+statsLabel.TextSize = 13
 statsLabel.TextXAlignment = Enum.TextXAlignment.Left
 statsLabel.TextYAlignment = Enum.TextYAlignment.Top
 statsLabel.ZIndex = 4
@@ -370,79 +383,82 @@ for i = 1, 3 do
 
     local card = Instance.new("Frame")
     card.Name = "Card"
-    card.Size = UDim2.new(1, 0, 0, 80)
-    card.Position = UDim2.new(0, 0, 0, 0)
-    card.BackgroundColor3 = Color3.fromRGB(25, 28, 38)
-    card.BorderSizePixel = 0
-    card.ZIndex = 6
+    card.Size = UDim2.new(0, 80, 0, 80)
+    card.BackgroundColor3 = (i == 1 and Color3.fromRGB(250, 195, 45)) or (i == 2 and Color3.fromRGB(235, 165, 25)) or Color3.fromRGB(80, 25, 105)
+    card.ClipsDescendants = true
+    card.ZIndex = 5
     card.Parent = slotContainer
 
     local cardCorner = Instance.new("UICorner")
-    cardCorner.CornerRadius = UDim.new(0, 8)
+    cardCorner.CornerRadius = UDim.new(0, 10)
     cardCorner.Parent = card
 
     local cardStroke = Instance.new("UIStroke")
-    cardStroke.Color = Color3.fromRGB(50, 60, 80)
-    cardStroke.Thickness = 1.5
+    cardStroke.Color = (i == 1 and Color3.fromRGB(255, 165, 0)) or (i == 2 and Color3.fromRGB(245, 140, 10)) or Color3.fromRGB(165, 75, 220)
+    cardStroke.Thickness = 2
     cardStroke.Parent = card
 
     local cardGradient = Instance.new("UIGradient")
+    cardGradient.Name = "CardGradient"
     cardGradient.Enabled = false
     cardGradient.Parent = card
 
-    local vpClone = nil
-    local lastVpRef = nil
+    local visualHolder = Instance.new("Frame")
+    visualHolder.Name = "VisualHolder"
+    visualHolder.Size = UDim2.new(1, 0, 1, 0)
+    visualHolder.BackgroundTransparency = 1
+    visualHolder.ZIndex = 6
+    visualHolder.Parent = card
 
     local imgLabel = Instance.new("ImageLabel")
     imgLabel.Name = "PetImage"
     imgLabel.Size = UDim2.new(0.85, 0, 0.85, 0)
-    imgLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-    imgLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    imgLabel.Position = UDim2.new(0.075, 0, 0.05, 0)
     imgLabel.BackgroundTransparency = 1
     imgLabel.ScaleType = Enum.ScaleType.Fit
     imgLabel.ZIndex = 7
-    imgLabel.Visible = false
-    imgLabel.Parent = card
+    imgLabel.Parent = visualHolder
 
     local countPill = Instance.new("TextLabel")
     countPill.Name = "CountPill"
-    countPill.Size = UDim2.new(0, 28, 0, 14)
-    countPill.Position = UDim2.new(1, -30, 0, 2)
-    countPill.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    countPill.BackgroundTransparency = 0.4
+    countPill.Size = UDim2.new(0, 32, 0, 16)
+    countPill.Position = UDim2.new(0, 3, 0, 3)
+    countPill.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
+    countPill.BackgroundTransparency = 0.2
+    countPill.Text = ""
     countPill.TextColor3 = Color3.fromRGB(255, 255, 255)
     countPill.Font = Enum.Font.GothamBold
-    countPill.TextSize = 9
-    countPill.ZIndex = 8
+    countPill.TextSize = 10
     countPill.Visible = false
+    countPill.ZIndex = 9
     countPill.Parent = card
 
-    local countCorner = Instance.new("UICorner")
-    countCorner.CornerRadius = UDim.new(0, 4)
-    countCorner.Parent = countPill
+    local pillCorner = Instance.new("UICorner")
+    pillCorner.CornerRadius = UDim.new(0, 4)
+    pillCorner.Parent = countPill
 
     local multLabel = Instance.new("TextLabel")
-    multLabel.Name = "Multiplier"
-    multLabel.Size = UDim2.new(1, 0, 0, 16)
+    multLabel.Name = "MultLabel"
+    multLabel.Size = UDim2.new(1, 0, 0, 18)
     multLabel.Position = UDim2.new(0, 0, 0, 84)
     multLabel.BackgroundTransparency = 1
-    multLabel.TextColor3 = Color3.fromRGB(255, 220, 50)
-    multLabel.Font = Enum.Font.GothamBold
-    multLabel.TextSize = 11
-    multLabel.ZIndex = 6
     multLabel.Text = "x..."
+    multLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    multLabel.Font = Enum.Font.GothamBold
+    multLabel.TextSize = 12
+    multLabel.ZIndex = 6
     multLabel.Parent = slotContainer
 
     local oddsLabel = Instance.new("TextLabel")
-    oddsLabel.Name = "Odds"
-    oddsLabel.Size = UDim2.new(1, 0, 0, 14)
-    oddsLabel.Position = UDim2.new(0, 0, 0, 102)
+    oddsLabel.Name = "OddsLabel"
+    oddsLabel.Size = UDim2.new(1, 0, 0, 16)
+    oddsLabel.Position = UDim2.new(0, 0, 0, 104)
     oddsLabel.BackgroundTransparency = 1
-    oddsLabel.TextColor3 = Color3.fromRGB(180, 190, 210)
-    oddsLabel.Font = Enum.Font.Gotham
-    oddsLabel.TextSize = 9
-    oddsLabel.ZIndex = 6
     oddsLabel.Text = "1 in ..."
+    oddsLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
+    oddsLabel.Font = Enum.Font.GothamBold
+    oddsLabel.TextSize = 10
+    oddsLabel.ZIndex = 6
     oddsLabel.Parent = slotContainer
 
     petSlots[i] = {
@@ -450,12 +466,13 @@ for i = 1, 3 do
         card = card,
         cardStroke = cardStroke,
         cardGradient = cardGradient,
-        clonedVp = vpClone,
-        lastVpRef = lastVpRef,
+        visualHolder = visualHolder,
         imgLabel = imgLabel,
         countPill = countPill,
         multLabel = multLabel,
-        oddsLabel = oddsLabel
+        oddsLabel = oddsLabel,
+        clonedVp = nil,
+        lastVpRef = nil
     }
 end
 
@@ -506,20 +523,17 @@ boostLabel.Text = "Mendeteksi boosts aktif..."
 boostLabel.Parent = activeBoostBox
 
 -- ====================================================================
---          10. SCANNER DATA GAME YANG CRASH-PROOF & INSTAN
+--          10. SCANNER DATA GAME YANG CRASH-PROOF & AKURAT
 -- ====================================================================
 
-local function parseNumber(str)
-    if not str then return 0 end
-    str = string.gsub(str, "[,%s]", "")
-    local mult = 1
-    if string.find(str, "[Kk]") then mult = 1e3; str = string.gsub(str, "[Kk]", "") end
-    if string.find(str, "[Mm]") then mult = 1e6; str = string.gsub(str, "[Mm]", "") end
-    if string.find(str, "[Bb]") then mult = 1e9; str = string.gsub(str, "[Bb]", "") end
-    if string.find(str, "[Tt]") then mult = 1e12; str = string.gsub(str, "[Tt]", "") end
-    if string.find(str, "[Qq]") then mult = 1e15; str = string.gsub(str, "[Qq]", "") end
-    local val = tonumber(str)
-    return (val and (val * mult)) or 0
+local function formatCompact(num)
+    if type(num) ~= "number" then return tostring(num or "0") end
+    if num >= 1e15 then return string.format("%.2fQ", num / 1e15) end
+    if num >= 1e12 then return string.format("%.2fT", num / 1e12) end
+    if num >= 1e9  then return string.format("%.2fB", num / 1e9) end
+    if num >= 1e6  then return string.format("%.2fM", num / 1e6) end
+    if num >= 1e3  then return string.format("%.2fK", num / 1e3) end
+    return tostring(math.floor(num))
 end
 
 local function formatOddsNum(str)
@@ -535,160 +549,225 @@ end
 local function getRarityColors(oddsText)
     local num = formatOddsNum(oddsText)
     if num >= 1e9 then
-        return Color3.fromRGB(40, 10, 50), Color3.fromRGB(255, 0, 128), ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(180, 0, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 200, 255))
-        }, 45
+        local seq = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 30, 110)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 20, 240))
+        })
+        return Color3.fromRGB(180, 25, 140), Color3.fromRGB(255, 80, 180), seq, 45
     elseif num >= 1e6 then
-        return Color3.fromRGB(20, 35, 60), Color3.fromRGB(0, 220, 255), ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 180, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 0, 255))
-        }, 45
+        local seq = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(230, 50, 50)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 20, 20))
+        })
+        return Color3.fromRGB(190, 30, 30), Color3.fromRGB(255, 80, 80), seq, 90
     elseif num >= 1e4 then
-        return Color3.fromRGB(50, 42, 10), Color3.fromRGB(255, 215, 0), ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 0)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 140, 0))
-        }, 45
+        local seq = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 210, 40)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 130, 10))
+        })
+        return Color3.fromRGB(250, 195, 45), Color3.fromRGB(255, 165, 0), seq, 90
     elseif num >= 200 then
-        return Color3.fromRGB(45, 28, 8), Color3.fromRGB(255, 150, 20), ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 160, 30)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 70, 0))
-        }, 45
+        local seq = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(245, 180, 35)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 10))
+        })
+        return Color3.fromRGB(235, 165, 25), Color3.fromRGB(245, 140, 10), seq, 90
     elseif num >= 50 then
-        return Color3.fromRGB(35, 15, 45), Color3.fromRGB(180, 70, 255), ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 50, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 20, 180))
-        }, 45
+        local seq = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(175, 80, 235)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(75, 20, 100))
+        })
+        return Color3.fromRGB(130, 45, 175), Color3.fromRGB(165, 75, 220), seq, 90
+    elseif num >= 10 then
+        local seq = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 120, 235)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 75, 175))
+        })
+        return Color3.fromRGB(35, 95, 210), Color3.fromRGB(60, 155, 255), seq, 90
     else
-        return Color3.fromRGB(20, 35, 30), Color3.fromRGB(50, 200, 100), nil, 0
+        local seq = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(55, 175, 85)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 125, 60))
+        })
+        return Color3.fromRGB(45, 150, 75), Color3.fromRGB(80, 210, 110), seq, 90
     end
 end
 
+local lastKnownW2 = "0"
+local lastKnownEgg = "Crimson Egg"
+local lastKnownIsland = "Crimson Island (World 2)"
+
 local function scanAllGameDataSafe()
     local result = {
-        islandName = "Memuat...",
-        eggName = "Memuat...",
+        eggName = lastKnownEgg,
+        islandName = lastKnownIsland,
         w1Rebirths = "0",
-        w2Rebirths = "0",
+        w2Rebirths = (lastKnownW2 ~= "0") and lastKnownW2 or "0",
         eggsVal = "0",
-        eggBox = {
-            inventory = "0/0",
-            eggsOpened = "0",
-            hatchSpeed = "0/s",
-            petsKept = "0",
-            autoDeleted = "0",
-            rarestOdds = "Belum Ada"
-        },
         bestPets = {}
     }
 
+    -- 1. Baca Leaderstats (W1 Rebirths & Eggs)
     pcall(function()
-        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if not playerGui then return end
+        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+        if leaderstats then
+            for _, s in ipairs(leaderstats:GetChildren()) do
+                local name = string.lower(s.Name)
+                if string.find(name, "rebirth") then
+                    result.w1Rebirths = formatCompact(s.Value)
+                elseif string.find(name, "egg") then
+                    result.eggsVal = formatCompact(s.Value)
+                end
+            end
+        end
+    end)
 
-        local camera = workspace.CurrentCamera
-        local screenW = camera and camera.ViewportSize.X or 1920
-        local screenH = camera and camera.ViewportSize.Y or 1080
+    -- 2. Baca Floor / Island dari Attributes
+    pcall(function()
+        local floorId = LocalPlayer:GetAttribute("TeleportArrivalId")
+        if floorId == 21 or floorId == "21" then
+            result.islandName = "Rift Island (World 2)"
+        elseif floorId then
+            result.islandName = "Floor " .. tostring(floorId) .. " (World 2)"
+        end
+    end)
 
-        local oddsFound = {}
-        local allVisibleLabels = {}
+    -- 3. Scan PlayerGui Secara Aman Tanpa Kemungkinan Crash
+    pcall(function()
+        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if not pGui then return end
 
-        for _, desc in ipairs(playerGui:GetDescendants()) do
-            if desc:IsA("GuiObject") and desc.Visible and desc.AbsoluteSize.X > 0 and desc.AbsoluteSize.Y > 0 then
-                if desc:IsA("TextLabel") and desc.Text ~= "" then
-                    local text = desc.Text
-                    local low = string.lower(text)
-                    local posX = desc.AbsolutePosition.X
-                    local posY = desc.AbsolutePosition.Y
+        local cam = workspace.CurrentCamera
+        local screenH = (cam and cam.ViewportSize.Y) or 600
 
-                    table.insert(allVisibleLabels, {obj = desc, text = text, low = low, x = posX, y = posY})
+        local bestLbl = nil
+        local lastLbl = nil
+        local potentialSlotElements = {}
 
-                    -- (1) Island Name
-                    if string.find(low, "island") and not string.find(low, "mastery") and not string.find(low, "quest") and not string.find(low, "portal") and not string.find(low, "%d") then
-                        if #text < 35 and result.islandName == "Memuat..." then
-                            result.islandName = text
-                        end
-                    end
+        for _, desc in ipairs(pGui:GetDescendants()) do
+            if desc:IsA("GuiObject") and desc.Visible then
+                local pX = 0
+                local pY = 0
+                local okPos = pcall(function()
+                    pX = desc.AbsolutePosition.X
+                    pY = desc.AbsolutePosition.Y
+                end)
 
-                    -- (2) Egg Name
-                    if string.find(low, "%f[%a]egg%f[%A]") and not string.find(low, "eggs") and not string.find(low, "opened") and not string.find(low, "hatch") and not string.find(low, "mastery") and not string.find(low, "auto") then
-                        local eggMatch = string.match(text, "^([%w%s]+%s+[Ee]gg)$")
-                        if eggMatch and #eggMatch < 30 and result.eggName == "Memuat..." then
-                            result.eggName = eggMatch
-                        end
-                    end
+                if okPos then
+                    if desc:IsA("TextLabel") and desc.Text ~= "" then
+                        local text = desc.Text
+                        local low = string.lower(text)
 
-                    -- (3) Rebirths W1 vs W2 & Total Eggs
-                    if posX < 260 and posY > (screenH * 0.45) and posY < (screenH * 0.95) then
-                        local numVal = string.match(text, "^[%d,%.]+[KkMmBbTtQq]?$")
-                        if numVal then
-                            if posY < (screenH * 0.65) then
-                                result.eggsVal = numVal
-                            elseif posY < (screenH * 0.78) then
-                                result.w1Rebirths = numVal
-                            else
-                                result.w2Rebirths = numVal
+                        -- (A) DETEKSI REBIRTHS W2 DI HUD KIRI BAWAH
+                        if pX < 260 and pY > (screenH * 0.45) and pY < (screenH * 0.95) then
+                            if string.find(low, "rebirth") and string.find(text, "%d") then
+                                local num = text:match("[%d%.,]+%s*[A-Za-z]*")
+                                if num and not string.find(string.lower(num), "rebirth") and #num >= 2 then
+                                    result.w2Rebirths = num:gsub("%s+", "")
+                                    lastKnownW2 = result.w2Rebirths
+                                end
+                            elseif low == "rebirths" or low == "rebirth" then
+                                local parent = desc.Parent
+                                if parent then
+                                    for _, sib in ipairs(parent:GetChildren()) do
+                                        if sib:IsA("TextLabel") and sib ~= desc and sib.Visible and sib.Text ~= "" then
+                                            if string.find(sib.Text, "%d") and not string.find(string.lower(sib.Text), "rebirth") then
+                                                result.w2Rebirths = sib.Text:gsub("%s+", "")
+                                                lastKnownW2 = result.w2Rebirths
+                                                break
+                                            end
+                                        end
+                                    end
+                                end
+                            elseif (string.find(string.lower(desc.Name), "rebirth") or (desc.Parent and string.find(string.lower(desc.Parent.Name), "rebirth"))) and string.find(text, "%d") then
+                                if not string.find(low, "price") and not string.find(low, "cost") and not string.find(low, "req") then
+                                    local num = text:match("[%d%.,]+%s*[A-Za-z]*")
+                                    if num and not string.find(string.lower(num), "rebirth") and #num >= 2 then
+                                        result.w2Rebirths = num:gsub("%s+", "")
+                                        lastKnownW2 = result.w2Rebirths
+                                    end
+                                end
                             end
                         end
-                    end
 
-                    -- (4) Box Egg Hatching Stats
-                    if string.find(low, "inventory") and string.find(text, "/") then
-                        result.eggBox.inventory = text
-                    elseif (string.find(low, "opened") or string.find(low, "hatched")) and string.find(text, "%d") then
-                        result.eggBox.eggsOpened = text
-                    elseif (string.find(low, "speed") or string.find(low, "/s")) and string.find(text, "%d") then
-                        result.eggBox.hatchSpeed = text
-                    elseif string.find(low, "kept") and string.find(text, "%d") then
-                        result.eggBox.petsKept = text
-                    elseif (string.find(low, "delete") or string.find(low, "deleted")) and string.find(text, "%d") then
-                        result.eggBox.autoDeleted = text
-                    elseif string.find(low, "rarest") and string.find(low, "1 in") then
-                        result.eggBox.rarestOdds = text
-                    end
-
-                    -- (5) Odds Deteksi Rarity (1 in ...)
-                    if string.find(low, "1 in ") and string.find(text, "%d") and #text <= 20 then
-                        if not string.find(low, "power") and not string.find(low, "from eggs") and not string.find(low, "only") and not string.find(low, "when") then
-                            table.insert(oddsFound, {label = desc, text = text, x = posX, y = posY})
+                        -- (B) DETEKSI EGG NAME & ISLAND SECARA AKURAT
+                        local matchedEgg = text:match("^([%w%s]+%s+[Ee]gg)$")
+                        if matchedEgg then
+                            local lowEgg = string.lower(matchedEgg)
+                            if not string.find(lowEgg, "auto") and not string.find(lowEgg, "speed") and not string.find(lowEgg, "opened") and not string.find(lowEgg, "price") and not string.find(lowEgg, "total") and not string.find(lowEgg, "hatch") then
+                                local islandPart = matchedEgg:gsub("%s+[Ee]gg$", ""):gsub("^%s*(.-)%s*$", "%1")
+                                if #islandPart >= 2 and islandPart ~= "Egg" and islandPart ~= "Eggs" then
+                                    result.eggName = matchedEgg
+                                    lastKnownEgg = matchedEgg
+                                    result.islandName = islandPart .. " Island (World 2)"
+                                    lastKnownIsland = result.islandName
+                                end
+                            end
                         end
+
+                        -- (C) DETEKSI HEADER BEST HATCHES & LAST HATCHES
+                        if string.find(low, "best") and string.find(low, "hatch") then
+                            bestLbl = desc
+                        elseif string.find(low, "last") and string.find(low, "hatch") then
+                            lastLbl = desc
+                        end
+                    end
+
+                    -- Kumpulkan elemen kartu pet
+                    if desc:IsA("TextLabel") or desc:IsA("ViewportFrame") or desc:IsA("ImageLabel") or desc:IsA("Frame") then
+                        table.insert(potentialSlotElements, desc)
                     end
                 end
             end
         end
 
-        -- Filter Odds Pet Egg Sidebar
-        local xGroups = {}
-        for _, item in ipairs(oddsFound) do
-            local bucket = math.floor(item.x / 40) * 40
-            xGroups[bucket] = (xGroups[bucket] or 0) + 1
-        end
+        -- PROSES 3 KARTU BEST HATCHES BERDASARKAN GEOMETRI & ANCESTORS
+        local oddsLabels = {}
+        if bestLbl then
+            local yStart = bestLbl.AbsolutePosition.Y
+            local yEnd = lastLbl and lastLbl.AbsolutePosition.Y or (yStart + 260)
+            local bestX = bestLbl.AbsolutePosition.X
 
-        local bestX = nil
-        local maxCount = 0
-        for bx, count in pairs(xGroups) do
-            if count > maxCount then
-                maxCount = count
-                bestX = bx
+            for _, elem in ipairs(potentialSlotElements) do
+                if elem:IsA("TextLabel") then
+                    local t = elem.Text
+                    local lowT = string.lower(t)
+                    if string.find(lowT, "1 in") and not string.find(lowT, "power") and not string.find(lowT, "egg") and not string.find(lowT, "only") and not string.find(lowT, "exist") and #t <= 20 then
+                        local posY = elem.AbsolutePosition.Y
+                        local posX = elem.AbsolutePosition.X
+                        if posY > yStart and posY < yEnd and posX >= (bestX - 40) and posX <= (bestX + 350) then
+                            table.insert(oddsLabels, elem)
+                        end
+                    end
+                end
             end
-        end
 
-        local finalOdds = {}
-        for _, item in ipairs(oddsFound) do
-            if not bestX or (item.x >= bestX - 40 and item.x <= bestX + 350) then
-                table.insert(finalOdds, item)
+            table.sort(oddsLabels, function(a, b)
+                local ax, bx = 0, 0
+                pcall(function() ax = a.AbsolutePosition.X end)
+                pcall(function() bx = b.AbsolutePosition.X end)
+                return ax < bx
+            end)
+        else
+            for _, elem in ipairs(potentialSlotElements) do
+                if elem:IsA("TextLabel") then
+                    local t = elem.Text
+                    local lowT = string.lower(t)
+                    if string.find(lowT, "1 in") and string.find(t, "%d") and not string.find(lowT, "power") and not string.find(lowT, "egg") and not string.find(lowT, "only") and not string.find(lowT, "exist") and #t <= 20 then
+                        table.insert(oddsLabels, elem)
+                    end
+                end
             end
+            table.sort(oddsLabels, function(a, b)
+                return formatOddsNum(a.Text) > formatOddsNum(b.Text)
+            end)
         end
 
-        table.sort(finalOdds, function(a, b)
-            return formatOddsNum(a.text) > formatOddsNum(b.text)
-        end)
+        for i = 1, math.min(#oddsLabels, 3) do
+            local oLabel = oddsLabels[i]
+            local slotCenterX = oLabel.AbsolutePosition.X + (oLabel.AbsoluteSize.X / 2)
+            local colRadius = math.max(45, oLabel.AbsoluteSize.X / 2 + 15)
 
-        -- Kumpulkan 3 Best Pet
-        for idx = 1, math.min(3, #finalOdds) do
-            local oData = finalOdds[idx]
-            local oLabel = oData.label
             local multVal = ""
             local countVal = ""
             local vpVal = nil
@@ -696,72 +775,93 @@ local function scanAllGameDataSafe()
             local detectedBg = nil
             local detectedStroke = nil
             local detectedGrad = nil
-            local detectedRot = nil
+            local detectedRot = 45
 
-            local cardContainer = oLabel.Parent
-            if cardContainer and cardContainer:IsA("GuiObject") then
-                for _, elem in ipairs(cardContainer:GetDescendants()) do
-                    if elem:IsA("GuiObject") and elem.Visible then
-                        local elemY = elem.AbsolutePosition.Y
+            for _, elem in ipairs(potentialSlotElements) do
+                local elemX = elem.AbsolutePosition.X + (elem.AbsoluteSize.X / 2)
+                local elemY = elem.AbsolutePosition.Y
+                local distY = math.abs(elemY - oLabel.AbsolutePosition.Y)
 
-                        if elem:IsA("Frame") or elem:IsA("ImageLabel") then
-                            if elem.BackgroundColor3 and elem.BackgroundTransparency < 0.8 then
-                                if elem.BackgroundColor3 ~= Color3.fromRGB(0,0,0) and elem.BackgroundColor3 ~= Color3.fromRGB(255,255,255) then
-                                    detectedBg = elem.BackgroundColor3
+                if math.abs(elemX - slotCenterX) <= colRadius and distY <= 150 then
+                    if (elem:IsA("Frame") or elem:IsA("ImageLabel")) and elem.AbsoluteSize.X >= 40 and elem.AbsoluteSize.Y >= 40 then
+                        if elem.BackgroundTransparency < 0.8 then
+                            local c = elem.BackgroundColor3
+                            if (c.R + c.G + c.B) > 0.35 then
+                                detectedBg = c
+                                local s = elem:FindFirstChildOfClass("UIStroke")
+                                if s then detectedStroke = s.Color end
+                                local g = elem:FindFirstChildOfClass("UIGradient")
+                                if g then
+                                    detectedGrad = g.Color
+                                    detectedRot = g.Rotation
                                 end
-                            end
-                            local strk = elem:FindFirstChildOfClass("UIStroke")
-                            if strk and strk.Enabled then
-                                detectedStroke = strk.Color
-                            end
-                            local grad = elem:FindFirstChildOfClass("UIGradient")
-                            if grad and grad.Enabled then
-                                detectedGrad = grad.Color
-                                detectedRot = grad.Rotation
-                            end
-                        end
-
-                        if elem:IsA("TextLabel") and elem ~= oLabel and elem.Text ~= "" then
-                            local t = elem.Text
-                            local lowElem = string.lower(t)
-                            if not string.find(lowElem, "power") and not string.find(lowElem, "only") and not string.find(lowElem, "exist") and not string.find(lowElem, "when") then
-                                if string.find(t, "x") and string.find(t, "%d") then
-                                    if elemY < (oLabel.AbsolutePosition.Y - 50) then
-                                        countVal = t
-                                    else
-                                        multVal = t
-                                    end
-                                end
-                            end
-                        elseif elem:IsA("ViewportFrame") and not vpVal then
-                            vpVal = elem
-                        elseif elem:IsA("ImageLabel") and elem.Image ~= "" and not vpVal and not imgVal then
-                            local n = string.lower(elem.Name)
-                            if not string.find(n, "bg") and not string.find(n, "border") and not string.find(n, "slot") and not string.find(n, "clover") and not string.find(n, "shadow") and not string.find(elem.Image, "rbxasset://textures") then
-                                imgVal = elem.Image
                             end
                         end
                     end
+
+                    if elem:IsA("TextLabel") and elem ~= oLabel and elem.Text ~= "" then
+                        local t = elem.Text
+                        local lowElem = string.lower(t)
+                        if not string.find(lowElem, "power") and not string.find(lowElem, "only") and not string.find(lowElem, "exist") and not string.find(lowElem, "when") then
+                            if string.find(t, "x") and string.find(t, "%d") then
+                                if elemY < (oLabel.AbsolutePosition.Y - 45) then
+                                    countVal = t
+                                else
+                                    multVal = t
+                                end
+                            end
+                        end
+                    elseif elem:IsA("ViewportFrame") and not vpVal then
+                        vpVal = elem
+                    elseif elem:IsA("ImageLabel") and elem.Image ~= "" and not vpVal and not imgVal then
+                        local n = string.lower(elem.Name)
+                        if not string.find(n, "bg") and not string.find(n, "border") and not string.find(n, "slot") and not string.find(n, "clover") and not string.find(n, "shadow") and not string.find(elem.Image, "rbxasset://textures") then
+                            imgVal = elem.Image
+                        end
+                    end
                 end
-
-                local fallbackBg, fallbackStroke, fallbackGrad, fallbackRot = getRarityColors(oLabel.Text)
-                local finalBg = detectedBg or fallbackBg
-                local finalStroke = detectedStroke or fallbackStroke
-                local finalGrad = detectedGrad or fallbackGrad
-                local finalRot = detectedRot or fallbackRot
-
-                table.insert(result.bestPets, {
-                    odds = oLabel.Text,
-                    mult = (multVal ~= "") and multVal or "x...",
-                    count = countVal,
-                    vp = vpVal,
-                    img = imgVal,
-                    cardBg = finalBg,
-                    cardStroke = finalStroke,
-                    cardGrad = finalGrad,
-                    cardRot = finalRot
-                })
             end
+
+            if not vpVal or multVal == "" then
+                local p = oLabel.Parent
+                local depth = 0
+                while p and depth < 3 do
+                    for _, child in ipairs(p:GetChildren()) do
+                        if child:IsA("ViewportFrame") and not vpVal then
+                            vpVal = child
+                        elseif child:IsA("ImageLabel") and child.Image ~= "" and not vpVal and not imgVal then
+                            local n = string.lower(child.Name)
+                            if not string.find(n, "bg") and not string.find(n, "border") and not string.find(child.Image, "rbxasset://textures") then
+                                imgVal = child.Image
+                            end
+                        elseif child:IsA("TextLabel") and child ~= oLabel and child.Text ~= "" and multVal == "" then
+                            if string.find(child.Text, "x") and string.find(child.Text, "%d") then
+                                multVal = child.Text
+                            end
+                        end
+                    end
+                    p = p.Parent
+                    depth = depth + 1
+                end
+            end
+
+            local fallbackBg, fallbackStroke, fallbackGrad, fallbackRot = getRarityColors(oLabel.Text)
+            local finalBg = detectedBg or fallbackBg
+            local finalStroke = detectedStroke or fallbackStroke
+            local finalGrad = detectedGrad or fallbackGrad
+            local finalRot = detectedRot or fallbackRot
+
+            table.insert(result.bestPets, {
+                odds = oLabel.Text,
+                mult = (multVal ~= "") and multVal or "x...",
+                count = countVal,
+                vp = vpVal,
+                img = imgVal,
+                cardBg = finalBg,
+                cardStroke = finalStroke,
+                cardGrad = finalGrad,
+                cardRot = finalRot
+            })
         end
     end)
 
@@ -790,6 +890,7 @@ local function updateHUD()
         end)
         local memMb = math.floor(Stats:GetTotalMemoryUsageMb())
 
+        -- Ambil data game secara crash-proof
         local data = scanAllGameDataSafe()
 
         -- Update 3 Kartu Best Hatches
@@ -802,6 +903,7 @@ local function updateHUD()
                 slotUI.multLabel.Text = slotData.mult
                 slotUI.oddsLabel.Text = slotData.odds
 
+                -- Update Warna Rarity Background, Border, dan Gradient persis di Game
                 if slotData.cardBg then
                     slotUI.card.BackgroundColor3 = slotData.cardBg
                 end
@@ -837,7 +939,7 @@ local function updateHUD()
                             if cam then
                                 clone.CurrentCamera = cam
                             end
-                            clone.Parent = slotUI.card
+                            clone.Parent = slotUI.visualHolder
                             slotUI.clonedVp = clone
                             slotUI.imgLabel.Visible = false
                         end)
@@ -874,7 +976,7 @@ local function updateHUD()
         end)
         boostLabel.Text = (#luckList > 0) and table.concat(luckList, "\n") or "Tidak ada boost luck aktif"
 
-        -- Update Kolom Kiri
+        -- Update Kolom Kiri (Bersih & Rapi)
         statsLabel.Text = string.format([[
 [STATUS SISTEM]
   • Uptime Sesi  : %s
@@ -887,20 +989,11 @@ local function updateHUD()
   • Rebirths W1  : %s
   • Rebirths W2  : %s
   • Total Eggs   : %s
-
-[EGG HATCHING STATS]
-  • Inventory    : %s
-  • Eggs Opened  : %s
-  • Hatch Speed  : %s
-  • Pets Kept    : %s
-  • Auto-Deleted : %s
-  • Rarest Odds  : %s
-]], uptimeStr, fps, ping, memMb, data.islandName, data.eggName, data.w1Rebirths, data.w2Rebirths, data.eggsVal,
-        data.eggBox.inventory, data.eggBox.eggsOpened, data.eggBox.hatchSpeed, data.eggBox.petsKept, data.eggBox.autoDeleted, data.eggBox.rarestOdds)
+]], uptimeStr, fps, ping, memMb, data.islandName, data.eggName, data.w1Rebirths, data.w2Rebirths, data.eggsVal)
     end)
 end
 
--- EKSEKUSI SEGERA PADA FRAME 0
+-- EKSEKUSI SEGERA PADA FRAME 0 (Langsung Muncul dalam 0.01 Detik!)
 task.spawn(function()
     updateHUD()
     while task.wait(0.5) do
