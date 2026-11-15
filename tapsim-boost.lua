@@ -424,40 +424,28 @@ for i = 1, 3 do
     countCorner.Parent = countPill
 
     local multLabel = Instance.new("TextLabel")
-    multLabel.Name = "Multiplier"
-    multLabel.Size = UDim2.new(1, -4, 0, 18)
-    multLabel.Position = UDim2.new(0, 2, 1, -20)
+    multLabel.Name = "MultLabel"
+    multLabel.Size = UDim2.new(1, 0, 0, 18)
+    multLabel.Position = UDim2.new(0, 0, 0, 84)
     multLabel.BackgroundTransparency = 1
-    multLabel.Text = "x..."
+    multLabel.Visible = false
     multLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     multLabel.Font = Enum.Font.GothamBold
-    multLabel.TextSize = 11
-    multLabel.TextScaled = true
-    multLabel.ZIndex = 8
-    multLabel.Parent = card
-
-    local multStroke = Instance.new("UIStroke")
-    multStroke.Color = Color3.fromRGB(0, 0, 0)
-    multStroke.Thickness = 2
-    multStroke.Parent = multLabel
+    multLabel.TextSize = 12
+    multLabel.ZIndex = 6
+    multLabel.Parent = slotContainer
 
     local oddsLabel = Instance.new("TextLabel")
     oddsLabel.Name = "OddsLabel"
-    oddsLabel.Size = UDim2.new(1, 0, 0, 24)
+    oddsLabel.Size = UDim2.new(1, 0, 0, 20)
     oddsLabel.Position = UDim2.new(0, 0, 0, 84)
     oddsLabel.BackgroundTransparency = 1
     oddsLabel.Text = "1 in ..."
-    oddsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    oddsLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
     oddsLabel.Font = Enum.Font.GothamBold
-    oddsLabel.TextSize = 11
-    oddsLabel.TextScaled = true
+    oddsLabel.TextSize = 12
     oddsLabel.ZIndex = 6
     oddsLabel.Parent = slotContainer
-
-    local oddsStroke = Instance.new("UIStroke")
-    oddsStroke.Color = Color3.fromRGB(0, 0, 0)
-    oddsStroke.Thickness = 2
-    oddsStroke.Parent = oddsLabel
 
     petSlots[i] = {
         container = slotContainer,
@@ -533,9 +521,15 @@ local function formatCompact(val)
     return formatted .. suffixes[exp + 1]
 end
 
--- ====================================================================
---    CRASH-PROOF FAST GAME SCANNER & RARITY COLOR MATCHER
--- ====================================================================
+local function formatOddsNum(str)
+    local num = tonumber(string.match(str, "%d+"))
+    if not num then return 0 end
+    local low = string.lower(str)
+    if string.find(low, "b") then return num * 1e9 end
+    if string.find(low, "m") then return num * 1e6 end
+    if string.find(low, "k") then return num * 1e3 end
+    return num
+end
 
 -- Palet Warna Rarity Tap Simulator yang Persis di Game
 local function getRarityColors(oddsStr)
@@ -572,7 +566,7 @@ local function getRarityColors(oddsStr)
         })
         return Color3.fromRGB(255, 215, 60), Color3.fromRGB(255, 180, 20), seq, 45
     elseif num >= 5000 then
-        -- Mythic / 1 in 10,000 (Glowing Golden Yellow Gradient seperti di Slot 1)
+        -- Mythic / 1 in 10,000 (Glowing Golden Yellow Gradient)
         local seq = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 90)),
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(250, 195, 45)),
@@ -580,14 +574,14 @@ local function getRarityColors(oddsStr)
         })
         return Color3.fromRGB(250, 200, 50), Color3.fromRGB(255, 165, 0), seq, 45
     elseif num >= 150 then
-        -- Legendary / 1 in 200 (Warm Amber Gold seperti di Slot 2)
+        -- Legendary / 1 in 200 (Warm Amber Gold)
         local seq = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(245, 185, 35)),
             ColorSequenceKeypoint.new(1, Color3.fromRGB(225, 145, 20))
         })
         return Color3.fromRGB(235, 165, 25), Color3.fromRGB(245, 140, 10), seq, 90
     elseif num >= 25 then
-        -- Epic / 1 in 78 (Deep Royal Purple seperti di Slot 3)
+        -- Epic / 1 in 78 (Deep Royal Purple)
         local seq = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(95, 30, 120)),
             ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 18, 85))
@@ -628,6 +622,7 @@ local function scanAllGameDataSafe()
         eggsVal = "0",
         eggBox = {
             inventory   = lastKnownInventory,
+            eggsOpened  = "0",
             hatchSpeed  = lastKnownHatchSpeed,
             petsKept    = lastKnownPetsKept,
             autoDeleted = lastKnownAutoDeleted,
@@ -636,63 +631,37 @@ local function scanAllGameDataSafe()
         bestPets = {}
     }
 
-    -- 1. Baca Currencies dari leaderstats & Folder Data Pemain
+    -- 1. Baca Rebirths W1 & Total Eggs Langsung dari Leaderstats
     pcall(function()
-        local function checkContainerForCurrencies(container)
-            if not container then return end
-            for _, item in ipairs(container:GetChildren()) do
-                local low = string.lower(item.Name)
-                local val = nil
-                if item:IsA("ValueBase") then
-                    val = item.Value
-                end
-
-                if val ~= nil then
-                    local isNum = (type(val) == "number") or (type(val) == "string" and tonumber(val:match("^[%d%.,]+")))
-                    if isNum then
-                        local numVal = tonumber(val) or tonumber(tostring(val):match("^[%d%.,]+"))
-                        if numVal and numVal > 0 then
-                            if string.find(low, "rebirth") and result.w1Rebirths == "0" then
-                                result.w1Rebirths = formatCompact(val)
-                            elseif string.find(low, "egg") and result.eggsVal == "0" then
-                                result.eggsVal = formatCompact(val)
-                            end
-                        end
-                    end
+        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+        if leaderstats then
+            for _, s in ipairs(leaderstats:GetChildren()) do
+                local low = string.lower(s.Name)
+                if string.find(low, "rebirth") then
+                    result.w1Rebirths = formatCompact(s.Value)
+                elseif string.find(low, "egg") then
+                    local eggFormatted = formatCompact(s.Value)
+                    result.eggsVal = eggFormatted
+                    result.eggBox.eggsOpened = eggFormatted -- Akurat 100% dari data pemain!
                 end
             end
         end
-
-        checkContainerForCurrencies(LocalPlayer:FindFirstChild("leaderstats"))
-        checkContainerForCurrencies(LocalPlayer:FindFirstChild("Data"))
-        checkContainerForCurrencies(LocalPlayer:FindFirstChild("Stats"))
-        checkContainerForCurrencies(LocalPlayer:FindFirstChild("Currencies"))
-        checkContainerForCurrencies(LocalPlayer:FindFirstChild("Values"))
     end)
 
-    -- 2. Baca Floor / Island dari Attributes
-    pcall(function()
-        local floorId = LocalPlayer:GetAttribute("TeleportArrivalId")
-        if floorId == 21 or floorId == "21" then
-            result.islandName = "Rift Island (World 2)"
-        elseif floorId then
-            result.islandName = "Floor " .. tostring(floorId) .. " (World 2)"
-        end
-    end)
-
-    -- 3. Scan PlayerGui Secara Aman Tanpa Kemungkinan Crash
+    -- 2. Scan PlayerGui Secara Aman (PENTING: Abaikan ZealistHUD Sendiri!)
     pcall(function()
         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
         if not pGui then return end
 
         local cam = workspace.CurrentCamera
         local screenH = (cam and cam.ViewportSize.Y) or 600
+        local screenW = (cam and cam.ViewportSize.X) or 800
 
         local bestLbl = nil
         local lastLbl = nil
         local potentialSlotElements = {}
 
-        -- Helper pembersih teks statistik penetasan telur (Bebas HTML font & anti-nyasar)
+        -- Helper pembersih teks statistik penetasan telur
         local function getCleanStatValue(label)
             if not label or not label:IsA("TextLabel") then return nil end
             local raw = label.Text
@@ -719,8 +688,13 @@ local function scanAllGameDataSafe()
         end
 
         for _, desc in ipairs(pGui:GetDescendants()) do
-            -- Validasi ketat IsA GuiObject agar property Visible & AbsolutePosition aman diakses
-            if desc:IsA("GuiObject") and desc.Visible then
+            -- PROTEKSI KUNCI: Jangan pernah scan elemen milik ZealistHUD sendiri!
+            local isOurHud = false
+            pcall(function()
+                isOurHud = desc:IsDescendantOf(hudGui)
+            end)
+
+            if not isOurHud and desc:IsA("GuiObject") and desc.Visible then
                 -- Kumpulkan SEMUA elemen kartu pet (Frame, ViewportFrame, ImageLabel, TextLabel)
                 if desc:IsA("TextLabel") or desc:IsA("ViewportFrame") or desc:IsA("ImageLabel") or desc:IsA("Frame") then
                     table.insert(potentialSlotElements, desc)
@@ -769,17 +743,19 @@ local function scanAllGameDataSafe()
                         end
                     end
 
-                    -- (B) DETEKSI EGG NAME & ISLAND
-                    local matchedEgg = text:match("^([%w%s]+%s+[Ee]gg)$")
-                    if matchedEgg then
-                        local lowEgg = string.lower(matchedEgg)
-                        if not string.find(lowEgg, "auto") and not string.find(lowEgg, "speed") and not string.find(lowEgg, "opened") and not string.find(lowEgg, "price") and not string.find(lowEgg, "total") and not string.find(lowEgg, "hatch") then
-                            local islandPart = matchedEgg:gsub("%s+[Ee]gg$", ""):gsub("^%s*(.-)%s*$", "%1")
-                            if #islandPart >= 2 and islandPart ~= "Egg" and islandPart ~= "Eggs" then
-                                result.eggName = matchedEgg
-                                lastKnownEgg = matchedEgg
-                                result.islandName = islandPart .. " Island (World 2)"
-                                lastKnownIsland = result.islandName
+                    -- (B) DETEKSI HEADER EGG AKTIF & ISLAND (HANYA DARI PANEL KANAN ATAS GAME)
+                    if pX > (screenW * 0.60) and pY < (screenH * 0.45) then
+                        local matchedEgg = text:match("^([%w%s]+%s+[Ee]gg)$")
+                        if matchedEgg then
+                            local lowEgg = string.lower(matchedEgg)
+                            if not string.find(lowEgg, "auto") and not string.find(lowEgg, "speed") and not string.find(lowEgg, "price") and not string.find(lowEgg, "total") and not string.find(lowEgg, "hatch") then
+                                local islandPart = matchedEgg:gsub("%s+[Ee]gg$", ""):gsub("^%s*(.-)%s*$", "%1")
+                                if #islandPart >= 2 and islandPart ~= "Egg" and islandPart ~= "Eggs" then
+                                    result.eggName = matchedEgg
+                                    lastKnownEgg = matchedEgg
+                                    result.islandName = islandPart .. " Island (World 2)"
+                                    lastKnownIsland = result.islandName
+                                end
                             end
                         end
                     end
@@ -817,10 +793,10 @@ local function scanAllGameDataSafe()
                         end
                     end
 
-                    -- (D) DETEKSI HEADER BEST HATCHES & LAST HATCHES
-                    if string.find(low, "best") and string.find(low, "hatch") then
+                    -- (D) DETEKSI HEADER BEST HATCHES & LAST HATCHES DARI GAME
+                    if string.find(low, "best") and string.find(low, "hatch") and pX > (screenW * 0.5) then
                         bestLbl = desc
-                    elseif string.find(low, "last") and string.find(low, "hatch") then
+                    elseif string.find(low, "last") and string.find(low, "hatch") and pX > (screenW * 0.5) then
                         lastLbl = desc
                     end
                 end
@@ -831,7 +807,7 @@ local function scanAllGameDataSafe()
         local oddsLabels = {}
         if bestLbl then
             local yStart = bestLbl.AbsolutePosition.Y
-            local yEnd = lastLbl and lastLbl.AbsolutePosition.Y or (yStart + 260)
+            local yEnd = (lastLbl and lastLbl.AbsolutePosition.Y > yStart) and lastLbl.AbsolutePosition.Y or (yStart + 300)
             local bestX = bestLbl.AbsolutePosition.X
 
             for _, elem in ipairs(potentialSlotElements) do
@@ -841,7 +817,7 @@ local function scanAllGameDataSafe()
                     if string.find(lowT, "1 in") and not string.find(lowT, "power") and not string.find(lowT, "egg") and not string.find(lowT, "only") and not string.find(lowT, "exist") and #t <= 20 then
                         local posY = elem.AbsolutePosition.Y
                         local posX = elem.AbsolutePosition.X
-                        if posY > yStart and posY < yEnd and posX >= (bestX - 40) and posX <= (bestX + 350) then
+                        if posY > yStart and posY < yEnd and posX >= (bestX - 50) and posX <= (bestX + 400) then
                             table.insert(oddsLabels, elem)
                         end
                     end
@@ -855,14 +831,18 @@ local function scanAllGameDataSafe()
                 pcall(function() bx = b.AbsolutePosition.X end)
                 return ax < bx
             end)
-        else
-            -- Fallback jika label Best Hatches tidak ditemukan: cari semua label odds 1 in ... terbesar
+        end
+
+        -- Fallback jika label Best Hatches tidak ditemukan: cari 3 label 1 in ... di sisi kanan layar
+        if #oddsLabels == 0 then
             for _, elem in ipairs(potentialSlotElements) do
                 if elem:IsA("TextLabel") then
                     local t = elem.Text
                     local lowT = string.lower(t)
                     if string.find(lowT, "1 in") and string.find(t, "%d") and not string.find(lowT, "power") and not string.find(lowT, "egg") and not string.find(lowT, "only") and not string.find(lowT, "exist") and #t <= 20 then
-                        table.insert(oddsLabels, elem)
+                        if elem.AbsolutePosition.X > (screenW * 0.45) then
+                            table.insert(oddsLabels, elem)
+                        end
                     end
                 end
             end
@@ -876,7 +856,6 @@ local function scanAllGameDataSafe()
             local slotCenterX = oLabel.AbsolutePosition.X + (oLabel.AbsoluteSize.X / 2)
             local colRadius = math.max(45, oLabel.AbsoluteSize.X / 2 + 15)
 
-            local multVal = ""
             local countVal = ""
             local vpVal = nil
             local imgVal = nil
@@ -915,8 +894,6 @@ local function scanAllGameDataSafe()
                             if string.find(t, "x") and string.find(t, "%d") then
                                 if elemY < (oLabel.AbsolutePosition.Y - 45) then
                                     countVal = t
-                                else
-                                    multVal = t
                                 end
                             end
                         end
@@ -932,7 +909,7 @@ local function scanAllGameDataSafe()
             end
 
             -- Jika belum ditemukan secara radius, periksa parent hierarchy oLabel
-            if not vpVal or multVal == "" then
+            if not vpVal and not imgVal then
                 local p = oLabel.Parent
                 local depth = 0
                 while p and depth < 3 do
@@ -943,10 +920,6 @@ local function scanAllGameDataSafe()
                             local n = string.lower(child.Name)
                             if not string.find(n, "bg") and not string.find(n, "border") and not string.find(child.Image, "rbxasset://textures") then
                                 imgVal = child.Image
-                            end
-                        elseif child:IsA("TextLabel") and child ~= oLabel and child.Text ~= "" and multVal == "" then
-                            if string.find(child.Text, "x") and string.find(child.Text, "%d") then
-                                multVal = child.Text
                             end
                         end
                     end
@@ -964,7 +937,6 @@ local function scanAllGameDataSafe()
 
             table.insert(result.bestPets, {
                 odds = oLabel.Text,
-                mult = (multVal ~= "") and multVal or "x...",
                 count = countVal,
                 vp = vpVal,
                 img = imgVal,
@@ -1003,14 +975,13 @@ local function updateHUD()
         -- Ambil data game secara crash-proof
         local data = scanAllGameDataSafe()
 
-        -- Update 3 Kartu Best Hatches
+        -- Update 3 Kartu Best Hatches (Cukup Odds dan Gambar Saja Tanpa Multiplier)
         for i = 1, 3 do
             local slotData = data.bestPets[i]
             local slotUI = petSlots[i]
 
             if slotData then
                 slotUI.container.Visible = true
-                slotUI.multLabel.Text = slotData.mult
                 slotUI.oddsLabel.Text = slotData.odds
 
                 -- Update Warna Rarity Background, Border, dan Gradient persis di Game
@@ -1064,7 +1035,6 @@ local function updateHUD()
                     slotUI.imgLabel.Image = slotData.img
                 end
             else
-                slotUI.multLabel.Text = "Belum Ada"
                 slotUI.oddsLabel.Text = "..."
                 slotUI.countPill.Visible = false
                 slotUI.card.BackgroundColor3 = Color3.fromRGB(25, 28, 38)
@@ -1086,7 +1056,7 @@ local function updateHUD()
         end)
         boostLabel.Text = (#luckList > 0) and table.concat(luckList, "\n") or "Tidak ada boost luck aktif"
 
-        -- Update Kolom Kiri (Gameplay Utama & Egg Stats - Bersih Tanpa Click & Gem)
+        -- Update Kolom Kiri (Bersih: Tanpa Clicks & Tanpa Gems, Opened Egg 100% Akurat)
         statsLabel.Text = string.format([[
 [STATUS SISTEM]
   • Uptime Sesi  : %s
@@ -1098,17 +1068,17 @@ local function updateHUD()
   • Hatching Egg : %s
   • Rebirths W1  : %s
   • Rebirths W2  : %s
-  • Total Eggs   : %s
 
 [EGG HATCHING STATS]
   • Inventory    : %s
+  • Eggs Opened  : %s
   • Hatch Speed  : %s
   • Pets Kept    : %s
   • Auto-Deleted : %s
   • Rarest Odds  : %s
 ]], uptimeStr, fps, ping, memMb,
-    data.islandName, data.eggName, data.w1Rebirths, data.w2Rebirths, data.eggsVal,
-    data.eggBox.inventory, data.eggBox.hatchSpeed, data.eggBox.petsKept, data.eggBox.autoDeleted, data.eggBox.rarestOdds)
+    data.islandName, data.eggName, data.w1Rebirths, data.w2Rebirths,
+    data.eggBox.inventory, data.eggBox.eggsOpened, data.eggBox.hatchSpeed, data.eggBox.petsKept, data.eggBox.autoDeleted, data.eggBox.rarestOdds)
     end)
 end
 
