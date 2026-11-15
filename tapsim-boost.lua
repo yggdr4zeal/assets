@@ -1,6 +1,6 @@
 -- ====================================================================
 --                  ZEALIST - TAP SIMULATOR AFK & MONITOR
---        (UNIVERSAL: PC POTASSIUM + ANDROID DELTA EXECUTOR)
+--        (CRASH-PROOF INSTANT SCANNER + 15 FPS + FLOATING BUTTON)
 -- ====================================================================
 
 local Players = game:GetService("Players")
@@ -48,11 +48,14 @@ end
 
 local TOGGLE_ICON = getZealistIcon()
 
--- 1. HARD ENGINE LOCK KE 15 FPS (Cukup 1 Kali di Awal)
-pcall(function()
-    if setfpscap then setfpscap(15) end
-    if set_fps_cap then set_fps_cap(15) end
-end)
+-- 1. HARD ENGINE LOCK KE 15 FPS
+local function lockFPS15()
+    pcall(function()
+        if setfpscap then setfpscap(15) end
+        if set_fps_cap then set_fps_cap(15) end
+    end)
+end
+lockFPS15()
 
 -- PENGUKUR REAL RENDER FPS (Akurat & Bukan Physics Solver)
 local realRenderFps = 15
@@ -80,45 +83,38 @@ pcall(function()
     workspace.InterpolationThrottling = Enum.InterpolationThrottlingMode.Enabled
 end)
 
--- 3. GLOBAL LIGHTING OPTIMIZATION
+-- 3. AUDIO ENGINE SHUTDOWN
+pcall(function()
+    SoundService.Volume = 0
+end)
+
+-- 4. LIGHTING PURGE
 pcall(function()
     Lighting.GlobalShadows = false
     Lighting.FogEnd = 9e9
-    Lighting.Brightness = 1
-    for _, child in ipairs(Lighting:GetChildren()) do
-        if child:IsA("PostProcessEffect") or child:IsA("Atmosphere") or child:IsA("Sky") or child:IsA("Clouds") then
-            child.Enabled = false
-        end
-    end
+    Lighting.Brightness = 0
+    Lighting.Technology = Enum.Technology.Compatibility
+    Lighting.EnvironmentDiffuseScale = 0
+    Lighting.EnvironmentSpecularScale = 0
 end)
 
--- 4. MUTE AUDIO GAMEPLAY
-pcall(function()
-    SoundService.AmbientReverb = Enum.ReverbType.NoReverb
-    for _, sound in ipairs(SoundService:GetDescendants()) do
-        if sound:IsA("Sound") then
-            sound.Volume = 0
-            sound:Stop()
-        end
-    end
-    SoundService.DescendantAdded:Connect(function(desc)
-        if desc:IsA("Sound") then
-            desc.Volume = 0
-            desc:Stop()
+-- 5. FILTER FLOATING DAMAGE (Mencegah Kebocoran RAM)
+task.spawn(function()
+    pcall(function()
+        local pGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+        if pGui then
+            pGui.DescendantAdded:Connect(function(desc)
+                pcall(function()
+                    if desc:IsA("TextLabel") and string.find(desc.Text, "^%+[%d%.,]+%s*[A-Za-z]*$") then
+                        desc.Visible = false
+                    end
+                end)
+            end)
         end
     end)
 end)
 
--- 5. ANTI-AFK ENGINE DISCONNECT PREVENTION
-pcall(function()
-    LocalPlayer.Idled:Connect(function()
-        local VirtualUser = game:GetService("VirtualUser")
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new(0, 0))
-    end)
-end)
-
--- 6. PEMBERSIH SAMPAH MEMORI (Ringan & Stabil Setiap 60 Detik Tanpa Bikin Hang)
+-- 6. RAM CLEANER & GARBAGE COLLECTOR (Ringan, Stabil, Setiap 60 Detik)
 task.spawn(function()
     while task.wait(60) do
         pcall(function()
@@ -128,32 +124,28 @@ task.spawn(function()
 end)
 
 -- ====================================================================
---            7. ANTARMUKA MONITOR ZEALIST (CLEAN & MINIMALIST)
+--            7. ZEALIST HUD & DYNAMIC SHOW / HIDE CONTROLLER
 -- ====================================================================
 
-local CoreGui = game:GetService("CoreGui")
-local parentGui = CoreGui
-if not pcall(function() local _ = parentGui.Name end) then
-    parentGui = LocalPlayer:WaitForChild("PlayerGui")
-end
+local guiParent = (gethui and gethui()) or LocalPlayer:WaitForChild("PlayerGui")
 
--- Bersihkan instance lama jika ada
-for _, oldGui in ipairs(parentGui:GetChildren()) do
-    if oldGui.Name == "ZealistMonitorGui" then
-        oldGui:Destroy()
+-- Bersihkan GUI lama jika ada
+pcall(function()
+    if guiParent:FindFirstChild("ZealistHUD") then
+        guiParent.ZealistHUD:Destroy()
     end
-end
+end)
 
 local hudGui = Instance.new("ScreenGui")
-hudGui.Name = "ZealistMonitorGui"
+hudGui.Name = "ZealistHUD"
+hudGui.DisplayOrder = 100
 hudGui.ResetOnSpawn = false
 hudGui.IgnoreGuiInset = true
-hudGui.DisplayOrder = 999999
-hudGui.Parent = parentGui
+hudGui.Parent = guiParent
 
--- (A) Layar Hitam Penghemat GPU / Layar Mati
+-- (A) Layar Hitam (Hanya aktif saat HUD tampil)
 local blackCover = Instance.new("Frame")
-blackCover.Name = "BlackScreenCover"
+blackCover.Name = "BlackScreenOverlay"
 blackCover.Size = UDim2.new(1, 0, 1, 0)
 blackCover.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 blackCover.BorderSizePixel = 0
@@ -197,7 +189,7 @@ if TOGGLE_ICON == "rbxassetid://0" or TOGGLE_ICON == "" then
     fallbackLabel.Parent = toggleBtn
 end
 
--- Fitur Drag Tombol Floating
+-- Fitur Drag Tombol Floating (Bisa Dipindah ke Mana Saja)
 local dragging = false
 local dragStart = nil
 local startPos = nil
@@ -231,7 +223,6 @@ mainContent.ZIndex = 2
 mainContent.Parent = hudGui
 
 local isHudVisible = true
-
 local function setHudState(visible)
     isHudVisible = visible
     mainContent.Visible = visible
@@ -258,7 +249,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- (D) Header Tengah
+-- (D) Header Tengah (Title ZEALIST Bersih Tanpa Gambar Kanan/Kiri)
 local header = Instance.new("Frame")
 header.Name = "HeaderCenter"
 header.AnchorPoint = Vector2.new(0.5, 0)
@@ -374,7 +365,6 @@ for i = 1, 3 do
     slotContainer.Position = UDim2.new(0, 8 + (i - 1) * 86, 0, 26)
     slotContainer.BackgroundTransparency = 1
     slotContainer.ZIndex = 5
-    slotContainer.Visible = false
     slotContainer.Parent = bestHatchesBox
 
     local card = Instance.new("Frame")
@@ -429,33 +419,45 @@ for i = 1, 3 do
     countPill.ZIndex = 9
     countPill.Parent = card
 
-    local pillCorner = Instance.new("UICorner")
-    pillCorner.CornerRadius = UDim.new(0, 4)
-    pillCorner.Parent = countPill
+    local countCorner = Instance.new("UICorner")
+    countCorner.CornerRadius = UDim.new(1, 0)
+    countCorner.Parent = countPill
 
     local multLabel = Instance.new("TextLabel")
-    multLabel.Name = "MultLabel"
-    multLabel.Size = UDim2.new(1, 0, 0, 18)
-    multLabel.Position = UDim2.new(0, 0, 0, 84)
+    multLabel.Name = "Multiplier"
+    multLabel.Size = UDim2.new(1, -4, 0, 18)
+    multLabel.Position = UDim2.new(0, 2, 1, -20)
     multLabel.BackgroundTransparency = 1
     multLabel.Text = "x..."
     multLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     multLabel.Font = Enum.Font.GothamBold
-    multLabel.TextSize = 12
-    multLabel.ZIndex = 6
-    multLabel.Parent = slotContainer
+    multLabel.TextSize = 11
+    multLabel.TextScaled = true
+    multLabel.ZIndex = 8
+    multLabel.Parent = card
+
+    local multStroke = Instance.new("UIStroke")
+    multStroke.Color = Color3.fromRGB(0, 0, 0)
+    multStroke.Thickness = 2
+    multStroke.Parent = multLabel
 
     local oddsLabel = Instance.new("TextLabel")
     oddsLabel.Name = "OddsLabel"
-    oddsLabel.Size = UDim2.new(1, 0, 0, 16)
-    oddsLabel.Position = UDim2.new(0, 0, 0, 104)
+    oddsLabel.Size = UDim2.new(1, 0, 0, 24)
+    oddsLabel.Position = UDim2.new(0, 0, 0, 84)
     oddsLabel.BackgroundTransparency = 1
     oddsLabel.Text = "1 in ..."
-    oddsLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
+    oddsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     oddsLabel.Font = Enum.Font.GothamBold
-    oddsLabel.TextSize = 10
+    oddsLabel.TextSize = 11
+    oddsLabel.TextScaled = true
     oddsLabel.ZIndex = 6
     oddsLabel.Parent = slotContainer
+
+    local oddsStroke = Instance.new("UIStroke")
+    oddsStroke.Color = Color3.fromRGB(0, 0, 0)
+    oddsStroke.Thickness = 2
+    oddsStroke.Parent = oddsLabel
 
     petSlots[i] = {
         container = slotContainer,
@@ -472,115 +474,134 @@ for i = 1, 3 do
     }
 end
 
--- ====================================================================
---            9. KOTAK ACTIVE LUCK BOOSTS
--- ====================================================================
-
-local activeBoostBox = Instance.new("Frame")
-activeBoostBox.Name = "ActiveBoostBox"
-activeBoostBox.Size = UDim2.new(0, 264, 0, 150)
-activeBoostBox.Position = UDim2.new(1, -276, 0, 212)
-activeBoostBox.BackgroundColor3 = Color3.fromRGB(20, 24, 35)
-activeBoostBox.BackgroundTransparency = 0.3
-activeBoostBox.ZIndex = 4
-activeBoostBox.Parent = monitorFrame
+-- Kotak Active Boosts
+local boostBox = Instance.new("Frame")
+boostBox.Name = "BoostBox"
+boostBox.Size = UDim2.new(0, 264, 0, 145)
+boostBox.Position = UDim2.new(1, -276, 0, 212)
+boostBox.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
+boostBox.BackgroundTransparency = 0.3
+boostBox.ZIndex = 4
+boostBox.Parent = monitorFrame
 
 local boostCorner = Instance.new("UICorner")
 boostCorner.CornerRadius = UDim.new(0, 8)
-boostCorner.Parent = activeBoostBox
+boostCorner.Parent = boostBox
 
 local boostStroke = Instance.new("UIStroke")
-boostStroke.Color = Color3.fromRGB(0, 220, 130)
-boostStroke.Thickness = 1.5
-boostStroke.Parent = activeBoostBox
+boostStroke.Color = Color3.fromRGB(0, 180, 255)
+boostStroke.Thickness = 1.2
+boostStroke.Parent = boostBox
 
 local boostTitle = Instance.new("TextLabel")
 boostTitle.Size = UDim2.new(1, 0, 0, 22)
 boostTitle.Position = UDim2.new(0, 0, 0, 2)
 boostTitle.BackgroundTransparency = 1
 boostTitle.Text = "🍀 ACTIVE LUCK BOOSTS 🍀"
-boostTitle.TextColor3 = Color3.fromRGB(0, 255, 150)
+boostTitle.TextColor3 = Color3.fromRGB(0, 220, 255)
 boostTitle.Font = Enum.Font.GothamBold
 boostTitle.TextSize = 11
 boostTitle.ZIndex = 5
-boostTitle.Parent = activeBoostBox
+boostTitle.Parent = boostBox
 
 local boostLabel = Instance.new("TextLabel")
-boostLabel.Size = UDim2.new(1, -16, 1, -28)
+boostLabel.Size = UDim2.new(1, -16, 1, -26)
 boostLabel.Position = UDim2.new(0, 8, 0, 24)
 boostLabel.BackgroundTransparency = 1
-boostLabel.TextColor3 = Color3.fromRGB(220, 240, 230)
+boostLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
 boostLabel.Font = Enum.Font.Code
-boostLabel.TextSize = 10
+boostLabel.TextSize = 12
 boostLabel.TextXAlignment = Enum.TextXAlignment.Left
 boostLabel.TextYAlignment = Enum.TextYAlignment.Top
 boostLabel.ZIndex = 5
-boostLabel.Text = "Mendeteksi boosts aktif..."
-boostLabel.Parent = activeBoostBox
+boostLabel.Text = "Tidak ada boost luck aktif"
+boostLabel.Parent = boostBox
 
--- ====================================================================
---          10. SCANNER DATA GAME YANG CRASH-PROOF & AKURAT
--- ====================================================================
+-- Helper Format Angka Kompak
+local suffixes = {"", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"}
+local function formatCompact(val)
+    local n = tonumber(val)
+    if not n then return tostring(val or "0") end
+    if n < 0 then return "-" .. formatCompact(-n) end
+    if n < 1000 then return tostring(math.floor(n)) end
 
-local function formatCompact(num)
-    if type(num) ~= "number" then return tostring(num or "0") end
-    if num >= 1e15 then return string.format("%.2fQ", num / 1e15) end
-    if num >= 1e12 then return string.format("%.2fT", num / 1e12) end
-    if num >= 1e9  then return string.format("%.2fB", num / 1e9) end
-    if num >= 1e6  then return string.format("%.2fM", num / 1e6) end
-    if num >= 1e3  then return string.format("%.2fK", num / 1e3) end
-    return tostring(math.floor(num))
+    local exp = math.floor(math.log10(n) / 3)
+    if exp > #suffixes - 1 then exp = #suffixes - 1 end
+
+    local num = n / (10 ^ (exp * 3))
+    local formatted = string.format("%.2f", num):gsub("%.?0+$", "")
+    return formatted .. suffixes[exp + 1]
 end
 
-local function formatOddsNum(str)
-    local num = tonumber(string.match(str, "%d+"))
-    if not num then return 0 end
-    local low = string.lower(str)
-    if string.find(low, "b") then return num * 1e9 end
-    if string.find(low, "m") then return num * 1e6 end
-    if string.find(low, "k") then return num * 1e3 end
-    return num
-end
+-- ====================================================================
+--    CRASH-PROOF FAST GAME SCANNER & RARITY COLOR MATCHER
+-- ====================================================================
 
-local function getRarityColors(oddsText)
-    local num = formatOddsNum(oddsText)
-    if num >= 1e9 then
+-- Palet Warna Rarity Tap Simulator yang Persis di Game
+local function getRarityColors(oddsStr)
+    local raw = string.lower(oddsStr or "")
+    local num = nil
+
+    local numStr = raw:match("1%s*in%s*([%d%.,]+%s*[kmb]?)")
+    if numStr then
+        local mult = 1
+        if string.find(numStr, "m") then
+            mult = 1000000
+        elseif string.find(numStr, "b") then
+            mult = 1000000000
+        elseif string.find(numStr, "k") then
+            mult = 1000
+        end
+        local clean = numStr:gsub("[^%d%.]", "")
+        local parsed = tonumber(clean)
+        if parsed then
+            num = parsed * mult
+        end
+    end
+
+    if not num then
+        num = tonumber(raw:match("%d+")) or 1
+    end
+
+    if num >= 1000000 then
+        -- Secret / Godly (Rainbow / Cyan-Gold)
         local seq = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 30, 110)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 20, 240))
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 225, 255)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 230, 80)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 120, 210))
         })
-        return Color3.fromRGB(180, 25, 140), Color3.fromRGB(255, 80, 180), seq, 45
-    elseif num >= 1e6 then
+        return Color3.fromRGB(255, 215, 60), Color3.fromRGB(255, 180, 20), seq, 45
+    elseif num >= 5000 then
+        -- Mythic / 1 in 10,000 (Glowing Golden Yellow Gradient seperti di Slot 1)
         local seq = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(230, 50, 50)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 20, 20))
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 90)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(250, 195, 45)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 160, 25))
         })
-        return Color3.fromRGB(190, 30, 30), Color3.fromRGB(255, 80, 80), seq, 90
-    elseif num >= 1e4 then
+        return Color3.fromRGB(250, 200, 50), Color3.fromRGB(255, 165, 0), seq, 45
+    elseif num >= 150 then
+        -- Legendary / 1 in 200 (Warm Amber Gold seperti di Slot 2)
         local seq = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 210, 40)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 130, 10))
-        })
-        return Color3.fromRGB(250, 195, 45), Color3.fromRGB(255, 165, 0), seq, 90
-    elseif num >= 200 then
-        local seq = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(245, 180, 35)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 10))
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(245, 185, 35)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(225, 145, 20))
         })
         return Color3.fromRGB(235, 165, 25), Color3.fromRGB(245, 140, 10), seq, 90
-    elseif num >= 50 then
+    elseif num >= 25 then
+        -- Epic / 1 in 78 (Deep Royal Purple seperti di Slot 3)
         local seq = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(175, 80, 235)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(75, 20, 100))
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(95, 30, 120)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 18, 85))
         })
-        return Color3.fromRGB(130, 45, 175), Color3.fromRGB(165, 75, 220), seq, 90
-    elseif num >= 10 then
+        return Color3.fromRGB(80, 25, 105), Color3.fromRGB(165, 75, 220), seq, 90
+    elseif num >= 6 then
+        -- Rare (Blue)
         local seq = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 120, 235)),
             ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 75, 175))
         })
         return Color3.fromRGB(35, 95, 210), Color3.fromRGB(60, 155, 255), seq, 90
     else
+        -- Uncommon / Common (Green)
         local seq = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(55, 175, 85)),
             ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 125, 60))
@@ -608,11 +629,10 @@ local function scanAllGameDataSafe()
         w1Rebirths = "0",
         w2Rebirths = (lastKnownW2 ~= "0") and lastKnownW2 or "0",
         eggsVal = "0",
-        clicksVal = (lastKnownClicks ~= "-") and lastKnownClicks or "-",
-        gemsVal = (lastKnownGems ~= "-") and lastKnownGems or "-",
+        clicksVal = (lastKnownClicks ~= "-" and lastKnownClicks ~= "0") and lastKnownClicks or "-",
+        gemsVal = (lastKnownGems ~= "-" and lastKnownGems ~= "0") and lastKnownGems or "-",
         eggBox = {
             inventory   = lastKnownInventory,
-            eggsOpened  = lastKnownEggsOpened,
             hatchSpeed  = lastKnownHatchSpeed,
             petsKept    = lastKnownPetsKept,
             autoDeleted = lastKnownAutoDeleted,
@@ -635,16 +655,19 @@ local function scanAllGameDataSafe()
                 if val ~= nil then
                     local isNum = (type(val) == "number") or (type(val) == "string" and tonumber(val:match("^[%d%.,]+")))
                     if isNum then
-                        if (string.find(low, "gem") or string.find(low, "diamond")) and (result.gemsVal == "-" or result.gemsVal == "0") then
-                            result.gemsVal = formatCompact(val)
-                            lastKnownGems = result.gemsVal
-                        elseif (string.find(low, "click") or string.find(low, "tap")) and not string.find(low, "control") and not string.find(low, "speed") and not string.find(low, "multi") and (result.clicksVal == "-" or result.clicksVal == "0" or result.clicksVal == "control") then
-                            result.clicksVal = formatCompact(val)
-                            lastKnownClicks = result.clicksVal
-                        elseif string.find(low, "rebirth") and result.w1Rebirths == "0" then
-                            result.w1Rebirths = formatCompact(val)
-                        elseif string.find(low, "egg") and result.eggsVal == "0" then
-                            result.eggsVal = formatCompact(val)
+                        local numVal = tonumber(val) or tonumber(tostring(val):match("^[%d%.,]+"))
+                        if numVal and numVal > 0 then
+                            if (string.find(low, "gem") or string.find(low, "diamond")) and (result.gemsVal == "-" or result.gemsVal == "0") then
+                                result.gemsVal = formatCompact(val)
+                                lastKnownGems = result.gemsVal
+                            elseif (string.find(low, "click") or string.find(low, "tap")) and not string.find(low, "control") and not string.find(low, "speed") and not string.find(low, "multi") and (result.clicksVal == "-" or result.clicksVal == "0" or result.clicksVal == "control") then
+                                result.clicksVal = formatCompact(val)
+                                lastKnownClicks = result.clicksVal
+                            elseif string.find(low, "rebirth") and result.w1Rebirths == "0" then
+                                result.w1Rebirths = formatCompact(val)
+                            elseif string.find(low, "egg") and result.eggsVal == "0" then
+                                result.eggsVal = formatCompact(val)
+                            end
                         end
                     end
                 end
@@ -658,18 +681,20 @@ local function scanAllGameDataSafe()
         checkContainerForCurrencies(LocalPlayer:FindFirstChild("Values"))
     end)
 
-    -- 2. Baca Attributes (Hanya angka valid, abaikan string seperti 'control')
+    -- 2. Baca Attributes (Hanya angka valid positif, abaikan string kontrol/multiplier)
     pcall(function()
         for attrName, attrVal in pairs(LocalPlayer:GetAttributes()) do
             local low = string.lower(attrName)
-            local isNum = (type(attrVal) == "number") or (type(attrVal) == "string" and tonumber(attrVal:match("^[%d%.,]+")))
-            if isNum then
-                if (string.find(low, "gem") or string.find(low, "diamond")) and (result.gemsVal == "-" or result.gemsVal == "0") then
-                    result.gemsVal = formatCompact(attrVal)
-                    lastKnownGems = result.gemsVal
-                elseif (string.find(low, "click") or string.find(low, "tap")) and not string.find(low, "control") and not string.find(low, "speed") and (result.clicksVal == "-" or result.clicksVal == "0" or result.clicksVal == "control") then
-                    result.clicksVal = formatCompact(attrVal)
-                    lastKnownClicks = result.clicksVal
+            if not string.find(low, "cooldown") and not string.find(low, "speed") and not string.find(low, "delay") and not string.find(low, "rate") and not string.find(low, "multi") and not string.find(low, "boost") and not string.find(low, "control") and not string.find(low, "streak") and not string.find(low, "batch") and not string.find(low, "seq") then
+                local numVal = tonumber(attrVal) or (type(attrVal) == "string" and tonumber(attrVal:match("^[%d%.,]+")))
+                if numVal and numVal > 0 then
+                    if (string.find(low, "gem") or string.find(low, "diamond")) and (result.gemsVal == "-" or result.gemsVal == "0") then
+                        result.gemsVal = formatCompact(attrVal)
+                        lastKnownGems = result.gemsVal
+                    elseif (string.find(low, "click") or string.find(low, "tap")) and (result.clicksVal == "-" or result.clicksVal == "0" or result.clicksVal == "control") then
+                        result.clicksVal = formatCompact(attrVal)
+                        lastKnownClicks = result.clicksVal
+                    end
                 end
             end
         end
@@ -696,6 +721,7 @@ local function scanAllGameDataSafe()
         local bestLbl = nil
         local lastLbl = nil
         local potentialSlotElements = {}
+        local bottomLeftCurrencies = {}
 
         -- Helper pembersih teks statistik penetasan telur (Bebas HTML font & anti-nyasar)
         local function getCleanStatValue(label)
@@ -724,6 +750,7 @@ local function scanAllGameDataSafe()
         end
 
         for _, desc in ipairs(pGui:GetDescendants()) do
+            -- Validasi ketat IsA GuiObject agar property Visible & AbsolutePosition aman diakses
             if desc:IsA("GuiObject") and desc.Visible then
                 local pX = 0
                 local pY = 0
@@ -737,8 +764,8 @@ local function scanAllGameDataSafe()
                         local text = desc.Text
                         local low = string.lower(text)
 
-                        -- (A) DETEKSI REBIRTHS W2 DI HUD KIRI BAWAH
-                        if pX < 260 and pY > (screenH * 0.45) and pY < (screenH * 0.95) then
+                        -- (A) DETEKSI HUD KIRI BAWAH (REBIRTHS W2, CLICKS/TAPS, GEMS)
+                        if pX < 280 and pY > (screenH * 0.40) and pY < (screenH * 0.98) then
                             if string.find(low, "rebirth") and string.find(text, "%d") then
                                 local num = text:match("[%d%.,]+%s*[A-Za-z]*")
                                 if num and not string.find(string.lower(num), "rebirth") and #num >= 2 then
@@ -767,9 +794,20 @@ local function scanAllGameDataSafe()
                                     end
                                 end
                             end
+
+                            -- Kumpulkan semua angka currency di area kiri bawah (Kecuali Rebirth & per detik /s)
+                            local curMatch = text:match("^[%d%.,]+%s*[A-Za-z]+$") or text:match("^[%d%.,]+$")
+                            if curMatch and not string.find(low, "rebirth") and not string.find(low, "/s") and not string.find(low, "fps") and not string.find(low, "ms") and not string.find(low, "level") and #curMatch <= 15 then
+                                table.insert(bottomLeftCurrencies, {
+                                    val = curMatch:gsub("%s+", ""),
+                                    y = pY,
+                                    x = pX,
+                                    label = desc
+                                })
+                            end
                         end
 
-                        -- (B) DETEKSI EGG NAME & ISLAND SECARA AKURAT
+                        -- (B) DETEKSI EGG NAME & ISLAND
                         local matchedEgg = text:match("^([%w%s]+%s+[Ee]gg)$")
                         if matchedEgg then
                             local lowEgg = string.lower(matchedEgg)
@@ -790,12 +828,6 @@ local function scanAllGameDataSafe()
                             if v and string.find(v, "/") then
                                 result.eggBox.inventory = v
                                 lastKnownInventory = v
-                            end
-                        elseif (string.find(low, "opened") or string.find(low, "hatched")) and not string.find(low, "egg") then
-                            local v = findAdjacentValue(desc)
-                            if v and string.find(v, "%d") and not string.find(v, "1 in") and not string.find(v, "in") and not string.find(v, "%%") then
-                                result.eggBox.eggsOpened = v
-                                lastKnownEggsOpened = v
                             end
                         elseif (string.find(low, "/min") or string.find(low, "/s")) and #text <= 15 then
                             local v = getCleanStatValue(desc)
@@ -823,9 +855,9 @@ local function scanAllGameDataSafe()
                             end
                         end
 
-                        -- (D) DETEKSI GEMS & CLICKS LANGSUNG DARI HUD GUI GAME
-                        local isCurrencyFormat = text:match("^[%d%.,]+%s*[A-Za-z]?$")
-                        if isCurrencyFormat and not string.find(low, "rebirth") and not string.find(low, "island") and not string.find(low, "1 in") then
+                        -- (D) DETEKSI GEMS & CLICKS LANGSUNG DARI HUD GUI GAME (SUPPORT QN, QI, SX, DLL)
+                        local isCurrencyFormat = text:match("^[%d%.,]+%s*[A-Za-z]+$") or text:match("^[%d%.,]+$")
+                        if isCurrencyFormat and not string.find(low, "rebirth") and not string.find(low, "island") and not string.find(low, "1 in") and not string.find(low, "/s") then
                             local dName = string.lower(desc.Name)
                             local pName = desc.Parent and string.lower(desc.Parent.Name) or ""
 
@@ -881,7 +913,7 @@ local function scanAllGameDataSafe()
                         end
                     end
 
-                    -- Kumpulkan elemen kartu pet
+                    -- Kumpulkan elemen kartu pet (termasuk Frame kartu untuk baca warna rarity game)
                     if desc:IsA("TextLabel") or desc:IsA("ViewportFrame") or desc:IsA("ImageLabel") or desc:IsA("Frame") then
                         table.insert(potentialSlotElements, desc)
                     end
@@ -889,7 +921,63 @@ local function scanAllGameDataSafe()
             end
         end
 
-        -- PROSES 3 KARTU BEST HATCHES BERDASARKAN GEOMETRI & ANCESTORS
+        -- PROSES RESOLUSI CURRENCIES KIRI BAWAH (CLICKS & GEMS)
+        if #bottomLeftCurrencies > 0 then
+            local foundClicks, foundGems = nil, nil
+            for _, item in ipairs(bottomLeftCurrencies) do
+                local d = item.label
+                local dName = string.lower(d.Name)
+                local pName = d.Parent and string.lower(d.Parent.Name) or ""
+                local hasGemIcon = false
+                local hasClickIcon = false
+
+                if d.Parent then
+                    for _, sib in ipairs(d.Parent:GetChildren()) do
+                        if sib:IsA("ImageLabel") and sib.Visible then
+                            local imgLow = string.lower(sib.Image)
+                            local sName = string.lower(sib.Name)
+                            if string.find(imgLow, "gem") or string.find(imgLow, "diamond") or string.find(sName, "gem") or string.find(sName, "diamond") then
+                                hasGemIcon = true
+                            elseif string.find(imgLow, "click") or string.find(imgLow, "tap") or string.find(imgLow, "cursor") or string.find(imgLow, "pointer") or string.find(sName, "click") or string.find(sName, "tap") then
+                                hasClickIcon = true
+                            end
+                        end
+                    end
+                end
+
+                if string.find(dName, "gem") or string.find(dName, "diamond") or string.find(pName, "gem") or string.find(pName, "diamond") or hasGemIcon then
+                    foundGems = item.val
+                elseif string.find(dName, "click") or string.find(dName, "tap") or string.find(pName, "click") or string.find(pName, "tap") or hasClickIcon then
+                    foundClicks = item.val
+                end
+            end
+
+            -- Fallback Geometri (Urutan Y dari atas ke bawah: Rebirths -> Clicks -> Gems)
+            if not foundClicks or not foundGems then
+                table.sort(bottomLeftCurrencies, function(a, b) return a.y < b.y end)
+                if #bottomLeftCurrencies >= 2 then
+                    if not foundClicks then foundClicks = bottomLeftCurrencies[1].val end
+                    if not foundGems then foundGems = bottomLeftCurrencies[2].val end
+                elseif #bottomLeftCurrencies == 1 then
+                    if bottomLeftCurrencies[1].y > (screenH * 0.82) then
+                        if not foundGems then foundGems = bottomLeftCurrencies[1].val end
+                    else
+                        if not foundClicks then foundClicks = bottomLeftCurrencies[1].val end
+                    end
+                end
+            end
+
+            if foundClicks and foundClicks ~= "0" then
+                result.clicksVal = foundClicks
+                lastKnownClicks = foundClicks
+            end
+            if foundGems and foundGems ~= "0" then
+                result.gemsVal = foundGems
+                lastKnownGems = foundGems
+            end
+        end
+
+        -- PROSES 3 KARTU BEST HATCHES BERDASARKAN GEOMETRI
         local oddsLabels = {}
         if bestLbl then
             local yStart = bestLbl.AbsolutePosition.Y
@@ -910,6 +998,7 @@ local function scanAllGameDataSafe()
                 end
             end
 
+            -- Urutkan dari kiri ke kanan
             table.sort(oddsLabels, function(a, b)
                 local ax, bx = 0, 0
                 pcall(function() ax = a.AbsolutePosition.X end)
@@ -917,6 +1006,7 @@ local function scanAllGameDataSafe()
                 return ax < bx
             end)
         else
+            -- Fallback jika label Best Hatches tidak ditemukan: cari semua label odds 1 in ... terbesar
             for _, elem in ipairs(potentialSlotElements) do
                 if elem:IsA("TextLabel") then
                     local t = elem.Text
@@ -951,6 +1041,7 @@ local function scanAllGameDataSafe()
                 local distY = math.abs(elemY - oLabel.AbsolutePosition.Y)
 
                 if math.abs(elemX - slotCenterX) <= colRadius and distY <= 150 then
+                    -- Deteksi Kartu Background Frame dari Game
                     if (elem:IsA("Frame") or elem:IsA("ImageLabel")) and elem.AbsoluteSize.X >= 40 and elem.AbsoluteSize.Y >= 40 then
                         if elem.BackgroundTransparency < 0.8 then
                             local c = elem.BackgroundColor3
@@ -990,6 +1081,7 @@ local function scanAllGameDataSafe()
                 end
             end
 
+            -- Jika belum ditemukan secara radius, periksa parent hierarchy oLabel
             if not vpVal or multVal == "" then
                 local p = oLabel.Parent
                 local depth = 0
@@ -1013,6 +1105,7 @@ local function scanAllGameDataSafe()
                 end
             end
 
+            -- Tentukan Warna Rarity: Prioritas bacaan langsung dari game, fallback ke palet resmi
             local fallbackBg, fallbackStroke, fallbackGrad, fallbackRot = getRarityColors(oLabel.Text)
             local finalBg = detectedBg or fallbackBg
             local finalStroke = detectedStroke or fallbackStroke
@@ -1160,14 +1253,13 @@ local function updateHUD()
 
 [EGG HATCHING STATS]
   • Inventory    : %s
-  • Eggs Opened  : %s
   • Hatch Speed  : %s
   • Pets Kept    : %s
   • Auto-Deleted : %s
   • Rarest Odds  : %s
 ]], uptimeStr, fps, ping, memMb,
     data.islandName, data.eggName, data.clicksVal, data.gemsVal, data.w1Rebirths, data.w2Rebirths, data.eggsVal,
-    data.eggBox.inventory, data.eggBox.eggsOpened, data.eggBox.hatchSpeed, data.eggBox.petsKept, data.eggBox.autoDeleted, data.eggBox.rarestOdds)
+    data.eggBox.inventory, data.eggBox.hatchSpeed, data.eggBox.petsKept, data.eggBox.autoDeleted, data.eggBox.rarestOdds)
     end)
 end
 
